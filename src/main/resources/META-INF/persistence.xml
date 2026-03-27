@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<persistence xmlns="https://jakarta.ee/xml/ns/persistence"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xsi:schemaLocation="https://jakarta.ee/xml/ns/persistence https://jakarta.ee/xml/ns/persistence/persistence_3_2.xsd"
+             version="3.2">
+    <persistence-unit name="bookstore" transaction-type="JTA">
+        <jta-data-source>java:app/jdbc/bookstore</jta-data-source>
+        <class>io.github.phunguy65.bookstore.auth.infrastructure.persistence.entity.CustomerEntity</class>
+        <class>io.github.phunguy65.bookstore.auth.infrastructure.persistence.entity.AddressEntity</class>
+        <class>io.github.phunguy65.bookstore.book.infrastructure.persistence.entity.BookEntity</class>
+        <class>io.github.phunguy65.bookstore.purchase.infrastructure.persistence.entity.CartEntity</class>
+        <class>io.github.phunguy65.bookstore.purchase.infrastructure.persistence.entity.CartItemEntity</class>
+        <class>io.github.phunguy65.bookstore.purchase.infrastructure.persistence.entity.OrderEntity</class>
+        <class>io.github.phunguy65.bookstore.purchase.infrastructure.persistence.entity.OrderItemEntity</class>
+        <properties>
+            <property name="jakarta.persistence.schema-generation.database.action" value="none"/>
+            <property name="jakarta.persistence.validation.mode" value="NONE"/>
+        </properties>
+    </persistence-unit>
+</persistence>

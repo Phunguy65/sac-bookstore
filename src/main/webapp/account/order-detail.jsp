@@ -15,25 +15,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chi tiet don hang - Bookstore</title>
+    <link rel="stylesheet" href="<%= request.getContextPath() %>/assets/purchase-shared.css">
     <style>
-        :root { color-scheme: light; --bg:#f4ecdf; --panel:#fffaf3; --border:#d9c7b1; --text:#2f271e; --muted:#6d6258; --accent:#8b4f29; }
-        body { margin:0; min-height:100vh; font-family:Georgia, "Times New Roman", serif; background:linear-gradient(180deg,#f9f5ef 0%,#f0e5d7 100%); color:var(--text); padding:24px; }
-        .shell { max-width:920px; margin:0 auto; background:var(--panel); border:1px solid var(--border); border-radius:24px; padding:28px; }
-        .item { border-top:1px solid var(--border); padding:14px 0; } .muted { color:var(--muted); }
-        .item, p { overflow-wrap:anywhere; }
-        a { min-height:44px; display:inline-flex; align-items:center; padding:12px 18px; border:1px solid var(--border); border-radius:999px; color:var(--text); text-decoration:none; }
-        a:focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
-        .toolbar { display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; align-items:center; }
+        p { overflow-wrap:anywhere; }
     </style>
 </head>
-<body>
-<main class="shell">
+<body class="purchase-page">
+<main class="shell purchase-shell-narrow purchase-shell-shadow">
     <div class="toolbar">
         <div>
             <h1>Don #<%= form.getOrder().orderId() %></h1>
             <p class="muted">Trang thai: <%= form.getOrder().status() %> - Tong tien: <%= form.getOrder().totalAmount() %></p>
         </div>
-        <a href="<%= request.getContextPath() %>/account/orders.jsp">Quay lai lich su</a>
+        <a class="link" href="<%= request.getContextPath() %>/account/orders.jsp">Quay lai lich su</a>
     </div>
 
     <section>
@@ -54,7 +48,7 @@
     <section>
         <h2>San pham</h2>
         <% for (OrderItemDetailView item : form.getOrder().items()) { %>
-        <div class="item">
+        <div class="purchase-item overflow-anywhere">
             <strong><%= HtmlEscaper.escape(item.bookTitle()) %></strong><br>
             <span class="muted">ISBN: <%= HtmlEscaper.escape(item.bookIsbn()) %> - So luong: <%= item.quantity() %> - Thanh tien: <%= item.lineTotal() %></span>
         </div>

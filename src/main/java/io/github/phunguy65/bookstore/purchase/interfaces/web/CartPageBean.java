@@ -4,6 +4,7 @@ import io.github.phunguy65.bookstore.auth.interfaces.web.AuthSession;
 import io.github.phunguy65.bookstore.purchase.application.service.CartActionResult;
 import io.github.phunguy65.bookstore.purchase.application.service.CartApplicationService;
 import io.github.phunguy65.bookstore.purchase.application.service.CartView;
+import io.github.phunguy65.bookstore.shared.domain.validation.FieldValidationException;
 import jakarta.enterprise.context.Dependent;
 import jakarta.inject.Inject;
 import jakarta.inject.Named;
@@ -23,7 +24,7 @@ public class CartPageBean {
     public CartPageModel handle(HttpServletRequest request, HttpServletResponse response) {
         var customerId = AuthSession.getCustomerId(request);
         String errorMessage = null;
-        String infoMessage = null;
+        String infoMessage = mapInfoMessage(request.getParameter("info"));
         String addBookIdError = null;
         String addQuantityError = null;
         Long lineErrorBookId = null;
@@ -40,7 +41,7 @@ public class CartPageBean {
                     submittedBookId = Long.parseLong(rawBookId);
                 }
             } catch (IllegalArgumentException ex) {
-                result = CartActionResult.failure(ex.getMessage());
+                result = requestFailure(action, ex);
             }
             if (result.isSuccess()) {
                 infoMessage = "Gio hang da duoc cap nhat.";
@@ -48,22 +49,39 @@ public class CartPageBean {
                 String message = result.getErrorMessage();
                 errorMessage = message;
                 if ("add".equals(action)) {
-                    if (message.contains("Ma sach") || message.contains("Khong tim thay sach")) {
-                        addBookIdError = message;
-                    }
-                    if (message.contains("So luong") || message.contains("quantity") || message.contains("het hang") || message.contains("ton kho")) {
-                        addQuantityError = message;
-                    }
+                    addBookIdError = result.getFieldError("bookId");
+                    addQuantityError = result.getFieldError("quantity");
                 }
                 if ("update".equals(action)) {
-                    lineErrorBookId = submittedBookId;
-                    lineQuantityError = message;
+                    lineQuantityError = result.getFieldError("quantity");
+                    if (lineQuantityError != null) {
+                        lineErrorBookId = submittedBookId;
+                    }
                 }
             }
         }
 
         CartView cart = cartApplicationService.getCart(customerId);
         return new CartPageModel(cart, errorMessage, infoMessage, addBookIdError, addQuantityError, lineErrorBookId, lineQuantityError);
+    }
+
+    private String mapInfoMessage(String value) {
+        if ("emptyCheckout".equals(trimToEmpty(value))) {
+            return "Gio hang dang trong. Vui long them sach truoc khi thanh toan.";
+        }
+        return null;
+    }
+
+    private CartActionResult requestFailure(String action, IllegalArgumentException ex) {
+        String message = ex.getMessage();
+        java.util.Map<String, String> fieldErrors = new java.util.HashMap<>();
+        if (ex instanceof FieldValidationException fieldValidationException) {
+            fieldErrors.put(fieldValidationException.getFieldName(), message);
+            if ("update".equals(action) && "quantity".equals(fieldValidationException.getFieldName())) {
+                fieldErrors.put("lineQuantity", message);
+            }
+        }
+        return CartActionResult.failure(message, fieldErrors);
     }
 
     private CartActionResult handleMutation(HttpServletRequest request) {
@@ -85,7 +103,7 @@ public class CartPageBean {
         try {
             return Integer.parseInt(trimToEmpty(value));
         } catch (NumberFormatException ex) {
-            throw new IllegalArgumentException("So luong khong hop le.");
+            throw new FieldValidationException("quantity", "So luong khong hop le.");
         }
     }
 
@@ -93,7 +111,7 @@ public class CartPageBean {
         try {
             return Long.parseLong(trimToEmpty(value));
         } catch (NumberFormatException ex) {
-            throw new IllegalArgumentException("Ma sach khong hop le.");
+            throw new FieldValidationException("bookId", "Ma sach khong hop le.");
         }
     }
 }

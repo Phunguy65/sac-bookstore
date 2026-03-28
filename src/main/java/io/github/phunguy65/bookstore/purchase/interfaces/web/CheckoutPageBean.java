@@ -26,7 +26,7 @@ public class CheckoutPageBean {
         var customerId = AuthSession.getCustomerId(request);
         CheckoutView checkout = checkoutApplicationService.getCheckout(customerId);
         if (checkout.cart().isEmpty()) {
-            response.sendRedirect(request.getContextPath() + PurchasePaths.CART);
+            response.sendRedirect(request.getContextPath() + PurchasePaths.CART + "?info=emptyCheckout");
             return new CheckoutPageModel(checkout.cart(), AddressFormData.empty(), true, null, java.util.Map.of());
         }
 
@@ -41,28 +41,20 @@ public class CheckoutPageBean {
             response.sendRedirect(request.getContextPath() + PurchasePaths.ORDER_DETAIL + "?orderId=" + result.getOrderId().value());
             return new CheckoutPageModel(checkout.cart(), form, checkout.requiresShippingAddressInput(), null, java.util.Map.of());
         }
-        java.util.Map<String, String> fieldErrors = mapFieldErrors(result.getErrorMessage());
+        java.util.Map<String, String> fieldErrors = mapFieldErrors(result);
         String errorMessage = fieldErrors.isEmpty() ? result.getErrorMessage() : null;
         return new CheckoutPageModel(checkout.cart(), form, checkout.requiresShippingAddressInput(), errorMessage, fieldErrors);
     }
 
-    private java.util.Map<String, String> mapFieldErrors(String message) {
+    private java.util.Map<String, String> mapFieldErrors(CheckoutResult result) {
         java.util.Map<String, String> fieldErrors = new java.util.HashMap<>();
-        mapFieldError(fieldErrors, "recipientName", message);
-        mapFieldError(fieldErrors, "phoneNumber", message);
-        mapFieldError(fieldErrors, "line1", message);
-        mapFieldError(fieldErrors, "ward", message);
-        mapFieldError(fieldErrors, "district", message);
-        mapFieldError(fieldErrors, "city", message);
-        mapFieldError(fieldErrors, "province", message);
-        mapFieldError(fieldErrors, "postalCode", message);
-        return fieldErrors;
-    }
-
-    private void mapFieldError(java.util.Map<String, String> fieldErrors, String fieldName, String message) {
-        if (message != null && message.startsWith(fieldName + " ")) {
-            fieldErrors.put(fieldName, message);
+        for (String fieldName : java.util.List.of("recipientName", "phoneNumber", "line1", "ward", "district", "city", "province", "postalCode")) {
+            String fieldError = result.getFieldError(fieldName);
+            if (fieldError != null) {
+                fieldErrors.put(fieldName, fieldError);
+            }
         }
+        return fieldErrors;
     }
 
     private AddressFormData readAddressForm(HttpServletRequest request) {

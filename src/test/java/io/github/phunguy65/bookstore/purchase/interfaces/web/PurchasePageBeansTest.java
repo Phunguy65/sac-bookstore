@@ -90,7 +90,20 @@ class PurchasePageBeansTest {
 
         bean.handle(requestContext.proxy(), responseContext.proxy());
 
-        assertEquals("/bookstore/account/cart.jsp", responseContext.redirectedUrl());
+        assertEquals("/bookstore/account/cart.jsp?info=emptyCheckout", responseContext.redirectedUrl());
+    }
+
+    @Test
+    void cartPageMapsEmptyCheckoutInfoMessage() {
+        StubCartApplicationService service = new StubCartApplicationService();
+        CartPageBean bean = new CartPageBean(service);
+        ServletApiTestSupport.TestRequestContext requestContext = ServletApiTestSupport.request("GET", "/bookstore")
+                .authenticated(1L)
+                .parameter("info", "emptyCheckout");
+
+        CartPageModel model = bean.handle(requestContext.proxy(), ServletApiTestSupport.response().proxy());
+
+        assertEquals("Gio hang dang trong. Vui long them sach truoc khi thanh toan.", model.getInfoMessage());
     }
 
     @Test
@@ -174,7 +187,7 @@ class PurchasePageBeansTest {
     void checkoutPageMapsFieldLevelValidationErrors() throws IOException {
         StubCheckoutApplicationService service = new StubCheckoutApplicationService();
         service.checkoutView = new CheckoutView(new CartView(List.of(new io.github.phunguy65.bookstore.purchase.application.service.CartLineView(new BookId(11L), new io.github.phunguy65.bookstore.book.domain.valueobject.BookTitle("Clean Code"), new Money(new BigDecimal("12.50")), new io.github.phunguy65.bookstore.shared.domain.valueobject.Quantity(1), new Money(new BigDecimal("12.50")), new io.github.phunguy65.bookstore.shared.domain.valueobject.Quantity(3))), new Money(new BigDecimal("12.50"))), null, true);
-        service.checkoutResult = CheckoutResult.failure("recipientName must not be blank");
+        service.checkoutResult = CheckoutResult.failure("recipientName must not be blank", java.util.Map.of("recipientName", "recipientName must not be blank"));
         CheckoutPageBean bean = new CheckoutPageBean(service);
         ServletApiTestSupport.TestRequestContext requestContext = ServletApiTestSupport.request("POST", "/bookstore")
                 .authenticated(1L)
@@ -205,7 +218,7 @@ class PurchasePageBeansTest {
     }
 
     private static final class StubCartApplicationService extends CartApplicationService {
-        private CartActionResult result = CartActionResult.failure("failure");
+        private CartActionResult result = CartActionResult.failure("failure", java.util.Map.of());
         private CartView cart = new CartView(List.of(), new Money(BigDecimal.ZERO));
 
         @Override
@@ -231,7 +244,7 @@ class PurchasePageBeansTest {
 
     private static final class StubCheckoutApplicationService extends CheckoutApplicationService {
         private CheckoutView checkoutView;
-        private CheckoutResult checkoutResult = CheckoutResult.failure("failure");
+        private CheckoutResult checkoutResult = CheckoutResult.failure("failure", java.util.Map.of());
 
         @Override
         public CheckoutView getCheckout(CustomerId customerId) {

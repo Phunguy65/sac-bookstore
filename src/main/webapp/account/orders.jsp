@@ -16,15 +16,12 @@
     <title>Don hang cua toi - Bookstore</title>
     <link rel="stylesheet" href="<%= request.getContextPath() %>/assets/purchase-shared.css">
     <style>
-        body { background:linear-gradient(180deg,#f9f5ef 0%,#f0e5d7 100%); }
-        .shell { max-width:920px; }
         .order { border-top:1px solid var(--border); padding:18px 0; display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; }
         .order { overflow-wrap:anywhere; }
-        .pagination { margin-top:20px; }
     </style>
 </head>
-<body>
-<main class="shell">
+<body class="purchase-page">
+<main class="shell purchase-shell-narrow">
     <div class="toolbar">
         <div>
             <h1>Lich su don hang</h1>
@@ -55,14 +52,16 @@
     <% } %>
     <% } %>
     <% if (form.getTotalPages() > 1) { %>
-    <nav class="actions pagination" aria-label="Order history pagination">
+    <nav class="purchase-pagination" aria-label="Order history pagination">
+        <ul class="actions list-reset">
         <% if (form.isHasPreviousPage()) { %>
-        <a class="link" href="<%= request.getContextPath() %>/account/orders.jsp?page=<%= form.getCurrentPage() - 1 %>">Trang truoc</a>
+        <li><a class="link" href="<%= request.getContextPath() %>/account/orders.jsp?page=<%= form.getCurrentPage() - 1 %>">Trang truoc</a></li>
         <% } %>
-        <span class="muted" aria-current="page">Trang <%= form.getCurrentPage() %>/<%= form.getTotalPages() %></span>
+        <li><span class="muted" aria-current="page">Trang <%= form.getCurrentPage() %>/<%= form.getTotalPages() %></span></li>
         <% if (form.isHasNextPage()) { %>
-        <a class="link" href="<%= request.getContextPath() %>/account/orders.jsp?page=<%= form.getCurrentPage() + 1 %>">Trang sau</a>
+        <li><a class="link" href="<%= request.getContextPath() %>/account/orders.jsp?page=<%= form.getCurrentPage() + 1 %>">Trang sau</a></li>
         <% } %>
+        </ul>
     </nav>
     <% } %>
 </main>

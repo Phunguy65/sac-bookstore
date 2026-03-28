@@ -41,3 +41,41 @@
 - Fixed: Added responsive data labels for stacked cart rows on narrow screens.
 - Fixed: Added field-associated inline validation messaging and invalid-state wiring for cart add/update forms and checkout address fields.
 - Fixed: Updated home page messaging to describe the implemented purchase experience instead of a placeholder auth route.
+
+## [2026-03-28] Round 4 (from spx-apply auto-verify)
+
+### spx-arch-verifier
+- Fixed: Removed `setMaxResults(1)` from cart and order repository methods that fetch item collections so aggregate loading no longer depends on provider-specific row limiting.
+- Fixed: Kept WildFly-compatible fetch joins alias-free across cart and order repository reads.
+
+### spx-uiux-verifier
+- Fixed: Added empty-checkout feedback by redirecting back to cart with an informational message and hiding the cart header checkout CTA when the cart is empty.
+- Fixed: Added screen-reader live status messaging for cart quantity update submissions.
+- Fixed: Moved cart and order-detail pages onto shared purchase design tokens/components and improved order-history pagination semantics.
+
+### spx-test-verifier
+- Fixed: Added regression checks for missing-order lookup results and for purchase repository fetch-join portability constraints.
+
+## [2026-03-28] Round 5 (from spx-apply auto-verify)
+
+### spx-arch-verifier
+- Fixed: Replaced string-parsing field binding in cart and checkout page flows with typed field-error maps returned from application-service result objects.
+
+### spx-uiux-verifier
+- Fixed: Moved checkout form panel/grid/list styling onto shared purchase CSS tokens and localized the remaining English checkout field labels.
+- Fixed: Removed inline pagination list styling from order history in favor of shared utility classes.
+
+### spx-test-verifier
+- Fixed: Added zero/negative quantity boundary tests for cart mutations and explicit checkout address field validation tests.
+- Fixed: Covered the page-bean parse-error path with typed field-error wiring so inline validation still works after the service-result refactor.
+
+## [2026-03-28] Round 6 (from spx-apply auto-verify)
+
+### spx-arch-verifier
+- Fixed: Introduced `FieldValidationException` in shared validation utilities so cart and checkout field-error binding now uses stable field metadata instead of parsing human-readable message text.
+
+### spx-uiux-verifier
+- Fixed: Moved the remaining purchase page body/shell/layout/table/item/input pagination styling into `purchase-shared.css` and switched the pages to shared utility classes.
+
+### spx-test-verifier
+- Fixed: Expanded checkout validation coverage to all remaining required address fields plus invalid phone-number format handling.

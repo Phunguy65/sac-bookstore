@@ -200,4 +200,136 @@ class CheckoutApplicationServiceTest {
         assertEquals("Khong tim thay sach trong gio hang.", result.getErrorMessage());
         assertEquals(1, cartRepository.findByCustomerId(CUSTOMER_ID).orElseThrow().items().size());
     }
+
+    @Test
+    void placeOrderFailsWhenRecipientNameIsBlank() {
+        var bookRepository = new PurchaseServiceTestSupport.InMemoryBookRepository();
+        var cartRepository = new PurchaseServiceTestSupport.InMemoryCartRepository();
+        var addressRepository = new PurchaseServiceTestSupport.InMemoryAddressRepository();
+        var orderRepository = new PurchaseServiceTestSupport.InMemoryOrderRepository();
+        cartRepository.put(PurchaseServiceTestSupport.cart(CUSTOMER_ID, PurchaseServiceTestSupport.cartItem(1L, 11L, 1, "12.50")));
+        bookRepository.put(PurchaseServiceTestSupport.book(11L, "Clean Code", 8, true, "12.50"));
+        CheckoutApplicationService service = new CheckoutApplicationService(cartRepository, bookRepository, addressRepository, orderRepository);
+
+        CheckoutResult result = service.placeOrder(CUSTOMER_ID, new CheckoutAddressInput(
+                "", "0901234567", "123 Main St", "", "Ward 1", "District 1", "Ho Chi Minh City", "Ho Chi Minh", "700000"
+        ));
+
+        assertFalse(result.isSuccess());
+        assertEquals("recipientName must not be blank", result.getErrorMessage());
+        assertEquals("recipientName must not be blank", result.getFieldError("recipientName"));
+    }
+
+    @Test
+    void placeOrderFailsWhenPostalCodeIsBlank() {
+        var bookRepository = new PurchaseServiceTestSupport.InMemoryBookRepository();
+        var cartRepository = new PurchaseServiceTestSupport.InMemoryCartRepository();
+        var addressRepository = new PurchaseServiceTestSupport.InMemoryAddressRepository();
+        var orderRepository = new PurchaseServiceTestSupport.InMemoryOrderRepository();
+        cartRepository.put(PurchaseServiceTestSupport.cart(CUSTOMER_ID, PurchaseServiceTestSupport.cartItem(1L, 11L, 1, "12.50")));
+        bookRepository.put(PurchaseServiceTestSupport.book(11L, "Clean Code", 8, true, "12.50"));
+        CheckoutApplicationService service = new CheckoutApplicationService(cartRepository, bookRepository, addressRepository, orderRepository);
+
+        CheckoutResult result = service.placeOrder(CUSTOMER_ID, new CheckoutAddressInput(
+                "Nguyen Van A", "0901234567", "123 Main St", "", "Ward 1", "District 1", "Ho Chi Minh City", "Ho Chi Minh", ""
+        ));
+
+        assertFalse(result.isSuccess());
+        assertEquals("postalCode must not be blank", result.getErrorMessage());
+        assertEquals("postalCode must not be blank", result.getFieldError("postalCode"));
+    }
+
+    @Test
+    void placeOrderFailsWhenPhoneNumberIsBlank() {
+        CheckoutResult result = placeOrderWithAddress("Nguyen Van A", "", "123 Main St", "Ward 1", "District 1", "Ho Chi Minh City", "Ho Chi Minh", "700000");
+
+        assertFalse(result.isSuccess());
+        assertEquals("phoneNumber must not be blank", result.getErrorMessage());
+        assertEquals("phoneNumber must not be blank", result.getFieldError("phoneNumber"));
+    }
+
+    @Test
+    void placeOrderFailsWhenLine1IsBlank() {
+        CheckoutResult result = placeOrderWithAddress("Nguyen Van A", "0901234567", "", "Ward 1", "District 1", "Ho Chi Minh City", "Ho Chi Minh", "700000");
+
+        assertFalse(result.isSuccess());
+        assertEquals("addressLine must not be blank", result.getErrorMessage());
+        assertEquals("addressLine must not be blank", result.getFieldError("addressLine"));
+    }
+
+    @Test
+    void placeOrderFailsWhenWardIsBlank() {
+        CheckoutResult result = placeOrderWithAddress("Nguyen Van A", "0901234567", "123 Main St", "", "District 1", "Ho Chi Minh City", "Ho Chi Minh", "700000");
+
+        assertFalse(result.isSuccess());
+        assertEquals("ward must not be blank", result.getErrorMessage());
+        assertEquals("ward must not be blank", result.getFieldError("ward"));
+    }
+
+    @Test
+    void placeOrderFailsWhenDistrictIsBlank() {
+        CheckoutResult result = placeOrderWithAddress("Nguyen Van A", "0901234567", "123 Main St", "Ward 1", "", "Ho Chi Minh City", "Ho Chi Minh", "700000");
+
+        assertFalse(result.isSuccess());
+        assertEquals("district must not be blank", result.getErrorMessage());
+        assertEquals("district must not be blank", result.getFieldError("district"));
+    }
+
+    @Test
+    void placeOrderFailsWhenCityIsBlank() {
+        CheckoutResult result = placeOrderWithAddress("Nguyen Van A", "0901234567", "123 Main St", "Ward 1", "District 1", "", "Ho Chi Minh", "700000");
+
+        assertFalse(result.isSuccess());
+        assertEquals("city must not be blank", result.getErrorMessage());
+        assertEquals("city must not be blank", result.getFieldError("city"));
+    }
+
+    @Test
+    void placeOrderFailsWhenProvinceIsBlank() {
+        CheckoutResult result = placeOrderWithAddress("Nguyen Van A", "0901234567", "123 Main St", "Ward 1", "District 1", "Ho Chi Minh City", "", "700000");
+
+        assertFalse(result.isSuccess());
+        assertEquals("province must not be blank", result.getErrorMessage());
+        assertEquals("province must not be blank", result.getFieldError("province"));
+    }
+
+    @Test
+    void placeOrderFailsWhenPhoneNumberFormatIsInvalid() {
+        CheckoutResult result = placeOrderWithAddress("Nguyen Van A", "invalid", "123 Main St", "Ward 1", "District 1", "Ho Chi Minh City", "Ho Chi Minh", "700000");
+
+        assertFalse(result.isSuccess());
+        assertEquals("phoneNumber must be a valid phone number", result.getErrorMessage());
+        assertEquals("phoneNumber must be a valid phone number", result.getFieldError("phoneNumber"));
+    }
+
+    private CheckoutResult placeOrderWithAddress(
+            String recipientName,
+            String phoneNumber,
+            String line1,
+            String ward,
+            String district,
+            String city,
+            String province,
+            String postalCode
+    ) {
+        var bookRepository = new PurchaseServiceTestSupport.InMemoryBookRepository();
+        var cartRepository = new PurchaseServiceTestSupport.InMemoryCartRepository();
+        var addressRepository = new PurchaseServiceTestSupport.InMemoryAddressRepository();
+        var orderRepository = new PurchaseServiceTestSupport.InMemoryOrderRepository();
+        cartRepository.put(PurchaseServiceTestSupport.cart(CUSTOMER_ID, PurchaseServiceTestSupport.cartItem(1L, 11L, 1, "12.50")));
+        bookRepository.put(PurchaseServiceTestSupport.book(11L, "Clean Code", 8, true, "12.50"));
+        CheckoutApplicationService service = new CheckoutApplicationService(cartRepository, bookRepository, addressRepository, orderRepository);
+
+        return service.placeOrder(CUSTOMER_ID, new CheckoutAddressInput(
+                recipientName,
+                phoneNumber,
+                line1,
+                "",
+                ward,
+                district,
+                city,
+                province,
+                postalCode
+        ));
+    }
 }

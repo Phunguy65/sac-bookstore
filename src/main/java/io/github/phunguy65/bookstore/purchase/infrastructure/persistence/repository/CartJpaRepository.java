@@ -21,7 +21,7 @@ public class CartJpaRepository implements CartRepository {
     @Override
     public Optional<Cart> findById(CartId cartId) {
         return findSingle(
-                "select distinct c from CartEntity c left join fetch c.items i where c.id = :cartId",
+                "select distinct c from CartEntity c left join fetch c.items where c.id = :cartId",
                 "cartId",
                 cartId.value()
         );
@@ -30,7 +30,7 @@ public class CartJpaRepository implements CartRepository {
     @Override
     public Optional<Cart> findByCustomerId(CustomerId customerId) {
         return findSingle(
-                "select distinct c from CartEntity c left join fetch c.items i where c.customer.id = :customerId",
+                "select distinct c from CartEntity c left join fetch c.items where c.customer.id = :customerId",
                 "customerId",
                 customerId.value()
         );
@@ -51,7 +51,6 @@ public class CartJpaRepository implements CartRepository {
     private Optional<Cart> findSingle(String query, String parameterName, Long parameterValue) {
         List<CartEntity> results = entityManager.createQuery(query, CartEntity.class)
                 .setParameter(parameterName, parameterValue)
-                .setMaxResults(1)
                 .getResultList();
         if (results.isEmpty()) {
             return Optional.empty();

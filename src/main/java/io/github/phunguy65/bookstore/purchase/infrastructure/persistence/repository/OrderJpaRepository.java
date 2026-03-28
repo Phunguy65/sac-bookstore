@@ -21,7 +21,7 @@ public class OrderJpaRepository implements OrderRepository {
     @Override
     public Optional<Order> findById(OrderId orderId) {
         return findSingle(
-                "select distinct o from OrderEntity o left join fetch o.items i where o.id = :orderId",
+                "select distinct o from OrderEntity o left join fetch o.items where o.id = :orderId",
                 "orderId",
                 orderId.value()
         );
@@ -30,12 +30,11 @@ public class OrderJpaRepository implements OrderRepository {
     @Override
     public Optional<Order> findByCustomerIdAndId(CustomerId customerId, OrderId orderId) {
         List<OrderEntity> results = entityManager.createQuery(
-                        "select distinct o from OrderEntity o left join fetch o.items i where o.customer.id = :customerId and o.id = :orderId",
+                        "select distinct o from OrderEntity o left join fetch o.items where o.customer.id = :customerId and o.id = :orderId",
                         OrderEntity.class
                 )
                 .setParameter("customerId", customerId.value())
                 .setParameter("orderId", orderId.value())
-                .setMaxResults(1)
                 .getResultList();
         if (results.isEmpty()) {
             return Optional.empty();
@@ -46,7 +45,7 @@ public class OrderJpaRepository implements OrderRepository {
     @Override
     public List<Order> findByCustomerId(CustomerId customerId) {
         return entityManager.createQuery(
-                        "select distinct o from OrderEntity o left join fetch o.items i where o.customer.id = :customerId order by o.createdAt desc",
+                        "select distinct o from OrderEntity o left join fetch o.items where o.customer.id = :customerId order by o.createdAt desc",
                         OrderEntity.class
                 )
                 .setParameter("customerId", customerId.value())
@@ -71,7 +70,6 @@ public class OrderJpaRepository implements OrderRepository {
     private Optional<Order> findSingle(String query, String parameterName, Long parameterValue) {
         List<OrderEntity> results = entityManager.createQuery(query, OrderEntity.class)
                 .setParameter(parameterName, parameterValue)
-                .setMaxResults(1)
                 .getResultList();
         if (results.isEmpty()) {
             return Optional.empty();

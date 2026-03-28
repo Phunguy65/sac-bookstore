@@ -9,6 +9,7 @@ import io.github.phunguy65.bookstore.shared.domain.valueobject.BookId;
 import io.github.phunguy65.bookstore.shared.domain.valueobject.CustomerId;
 import io.github.phunguy65.bookstore.shared.domain.valueobject.Money;
 import io.github.phunguy65.bookstore.shared.domain.valueobject.Quantity;
+import io.github.phunguy65.bookstore.shared.domain.validation.FieldValidationException;
 import jakarta.ejb.Stateless;
 import jakarta.inject.Inject;
 
@@ -69,7 +70,7 @@ public class CartApplicationService {
             cartRepository.save(copyCart(cart, updatedItems));
             return CartActionResult.success();
         } catch (IllegalArgumentException ex) {
-            return CartActionResult.failure(ex.getMessage());
+            return cartFailure(ex);
         }
     }
 
@@ -100,7 +101,7 @@ public class CartApplicationService {
             cartRepository.save(copyCart(cart, updatedItems));
             return CartActionResult.success();
         } catch (IllegalArgumentException ex) {
-            return CartActionResult.failure(ex.getMessage());
+            return cartFailure(ex);
         }
     }
 
@@ -120,12 +121,12 @@ public class CartApplicationService {
 
     private Book requireAvailableBook(BookId bookId) {
         Book book = bookRepository.findById(bookId)
-                .orElseThrow(() -> new IllegalArgumentException("Khong tim thay sach duoc yeu cau."));
+                .orElseThrow(() -> new FieldValidationException("bookId", "Khong tim thay sach duoc yeu cau."));
         if (!book.active()) {
-            throw new IllegalArgumentException("Sach nay hien khong con mo ban.");
+            throw new FieldValidationException("quantity", "Sach nay hien khong con mo ban.");
         }
         if (book.stockQuantity().value() <= 0) {
-            throw new IllegalArgumentException("Sach nay da het hang.");
+            throw new FieldValidationException("quantity", "Sach nay da het hang.");
         }
         return book;
     }
@@ -134,6 +135,15 @@ public class CartApplicationService {
         if (quantity > book.stockQuantity().value()) {
             throw new IllegalArgumentException("So luong vuot qua ton kho hien tai.");
         }
+    }
+
+    private CartActionResult cartFailure(IllegalArgumentException ex) {
+        String message = ex.getMessage();
+        java.util.Map<String, String> fieldErrors = new java.util.HashMap<>();
+        if (ex instanceof FieldValidationException fieldValidationException) {
+            fieldErrors.put(fieldValidationException.getFieldName(), message);
+        }
+        return CartActionResult.failure(message, fieldErrors);
     }
 
     private int indexOfBook(List<CartItem> items, BookId bookId) {

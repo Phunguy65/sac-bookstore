@@ -34,4 +34,15 @@ class OrderQueryApplicationServiceTest {
         assertFalse(foreign.isFound());
         assertEquals("Khong tim thay don hang phu hop.", foreign.getErrorMessage());
     }
+
+    @Test
+    void getOwnedOrderReturnsNotFoundForMissingOrder() {
+        var orderRepository = new PurchaseServiceTestSupport.InMemoryOrderRepository();
+        OrderQueryApplicationService service = new OrderQueryApplicationService(orderRepository);
+
+        OrderLookupResult result = service.getOwnedOrder(new CustomerId(1L), 999L);
+
+        assertFalse(result.isFound());
+        assertEquals("Khong tim thay don hang phu hop.", result.getErrorMessage());
+    }
 }

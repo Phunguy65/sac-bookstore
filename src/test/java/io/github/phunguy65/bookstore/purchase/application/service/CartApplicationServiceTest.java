@@ -136,4 +136,31 @@ class CartApplicationServiceTest {
         assertFalse(result.isSuccess());
         assertEquals("Khong tim thay sach duoc yeu cau.", result.getErrorMessage());
     }
+
+    @Test
+    void rejectsZeroQuantityWhenAddingBook() {
+        var bookRepository = new PurchaseServiceTestSupport.InMemoryBookRepository();
+        var cartRepository = new PurchaseServiceTestSupport.InMemoryCartRepository();
+        bookRepository.put(PurchaseServiceTestSupport.book(11L, "Clean Code", 8, true, "12.50"));
+        CartApplicationService service = new CartApplicationService(bookRepository, cartRepository);
+
+        CartActionResult result = service.addBook(CUSTOMER_ID, 11L, 0);
+
+        assertFalse(result.isSuccess());
+        assertEquals("quantity must be positive", result.getErrorMessage());
+    }
+
+    @Test
+    void rejectsNegativeQuantityWhenUpdatingBook() {
+        var bookRepository = new PurchaseServiceTestSupport.InMemoryBookRepository();
+        var cartRepository = new PurchaseServiceTestSupport.InMemoryCartRepository();
+        bookRepository.put(PurchaseServiceTestSupport.book(11L, "Clean Code", 8, true, "12.50"));
+        cartRepository.put(PurchaseServiceTestSupport.cart(CUSTOMER_ID, PurchaseServiceTestSupport.cartItem(1L, 11L, 1, "12.50")));
+        CartApplicationService service = new CartApplicationService(bookRepository, cartRepository);
+
+        CartActionResult result = service.updateQuantity(CUSTOMER_ID, 11L, -5);
+
+        assertFalse(result.isSuccess());
+        assertEquals("quantity must be positive", result.getErrorMessage());
+    }
 }

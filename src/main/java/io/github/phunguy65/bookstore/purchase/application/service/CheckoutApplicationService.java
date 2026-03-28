@@ -23,6 +23,7 @@ import io.github.phunguy65.bookstore.shared.domain.valueobject.PostalCode;
 import io.github.phunguy65.bookstore.shared.domain.valueobject.Province;
 import io.github.phunguy65.bookstore.shared.domain.valueobject.RecipientName;
 import io.github.phunguy65.bookstore.shared.domain.valueobject.Ward;
+import io.github.phunguy65.bookstore.shared.domain.validation.FieldValidationException;
 import jakarta.ejb.Stateless;
 import jakarta.inject.Inject;
 
@@ -81,7 +82,7 @@ public class CheckoutApplicationService {
             cartRepository.save(new Cart(cart.id(), cart.customerId(), List.of(), cart.version(), cart.createdAt(), Instant.now()));
             return CheckoutResult.success(savedOrder.id());
         } catch (IllegalArgumentException ex) {
-            return CheckoutResult.failure(ex.getMessage());
+            return checkoutFailure(ex);
         }
     }
 
@@ -177,6 +178,15 @@ public class CheckoutApplicationService {
     private CartView buildCartView(CustomerId customerId) {
         Cart cart = cartRepository.findByCustomerId(customerId).orElse(new Cart(null, customerId, List.of(), 0L, Instant.now(), Instant.now()));
         return CartViewAssembler.toCartView(cart, bookRepository);
+    }
+
+    private CheckoutResult checkoutFailure(IllegalArgumentException ex) {
+        String message = ex.getMessage();
+        java.util.Map<String, String> fieldErrors = new java.util.HashMap<>();
+        if (ex instanceof FieldValidationException fieldValidationException) {
+            fieldErrors.put(fieldValidationException.getFieldName(), message);
+        }
+        return CheckoutResult.failure(message, fieldErrors);
     }
 
     private record PreparedOrder(Order order, List<BookStockChange> bookStockChanges) {

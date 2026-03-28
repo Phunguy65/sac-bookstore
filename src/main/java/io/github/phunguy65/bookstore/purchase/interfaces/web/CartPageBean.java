@@ -1,0 +1,99 @@
+package io.github.phunguy65.bookstore.purchase.interfaces.web;
+
+import io.github.phunguy65.bookstore.auth.interfaces.web.AuthSession;
+import io.github.phunguy65.bookstore.purchase.application.service.CartActionResult;
+import io.github.phunguy65.bookstore.purchase.application.service.CartApplicationService;
+import io.github.phunguy65.bookstore.purchase.application.service.CartView;
+import jakarta.enterprise.context.Dependent;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+
+@Named
+@Dependent
+public class CartPageBean {
+    private final CartApplicationService cartApplicationService;
+
+    @Inject
+    public CartPageBean(CartApplicationService cartApplicationService) {
+        this.cartApplicationService = cartApplicationService;
+    }
+
+    public CartPageModel handle(HttpServletRequest request, HttpServletResponse response) {
+        var customerId = AuthSession.getCustomerId(request);
+        String errorMessage = null;
+        String infoMessage = null;
+        String addBookIdError = null;
+        String addQuantityError = null;
+        Long lineErrorBookId = null;
+        String lineQuantityError = null;
+
+        if ("POST".equalsIgnoreCase(request.getMethod())) {
+            String action = trimToEmpty(request.getParameter("action"));
+            Long submittedBookId = null;
+            CartActionResult result;
+            try {
+                result = handleMutation(request);
+                String rawBookId = trimToEmpty(request.getParameter("bookId"));
+                if (!rawBookId.isEmpty()) {
+                    submittedBookId = Long.parseLong(rawBookId);
+                }
+            } catch (IllegalArgumentException ex) {
+                result = CartActionResult.failure(ex.getMessage());
+            }
+            if (result.isSuccess()) {
+                infoMessage = "Gio hang da duoc cap nhat.";
+            } else {
+                String message = result.getErrorMessage();
+                errorMessage = message;
+                if ("add".equals(action)) {
+                    if (message.contains("Ma sach") || message.contains("Khong tim thay sach")) {
+                        addBookIdError = message;
+                    }
+                    if (message.contains("So luong") || message.contains("quantity") || message.contains("het hang") || message.contains("ton kho")) {
+                        addQuantityError = message;
+                    }
+                }
+                if ("update".equals(action)) {
+                    lineErrorBookId = submittedBookId;
+                    lineQuantityError = message;
+                }
+            }
+        }
+
+        CartView cart = cartApplicationService.getCart(customerId);
+        return new CartPageModel(cart, errorMessage, infoMessage, addBookIdError, addQuantityError, lineErrorBookId, lineQuantityError);
+    }
+
+    private CartActionResult handleMutation(HttpServletRequest request) {
+        String action = trimToEmpty(request.getParameter("action"));
+        long bookId = parseLong(request.getParameter("bookId"));
+        return switch (action) {
+            case "add" -> cartApplicationService.addBook(AuthSession.getCustomerId(request), bookId, parseInt(request.getParameter("quantity")));
+            case "update" -> cartApplicationService.updateQuantity(AuthSession.getCustomerId(request), bookId, parseInt(request.getParameter("quantity")));
+            case "remove" -> cartApplicationService.removeBook(AuthSession.getCustomerId(request), bookId);
+            default -> CartActionResult.failure("Hanh dong gio hang khong hop le.");
+        };
+    }
+
+    private String trimToEmpty(String value) {
+        return value == null ? "" : value.trim();
+    }
+
+    private int parseInt(String value) {
+        try {
+            return Integer.parseInt(trimToEmpty(value));
+        } catch (NumberFormatException ex) {
+            throw new IllegalArgumentException("So luong khong hop le.");
+        }
+    }
+
+    private long parseLong(String value) {
+        try {
+            return Long.parseLong(trimToEmpty(value));
+        } catch (NumberFormatException ex) {
+            throw new IllegalArgumentException("Ma sach khong hop le.");
+        }
+    }
+}

@@ -1,9 +1,10 @@
 [versions]
-java = "25"
-jakarta = "11.0.0"
+java = "21"
+jakarta = "10.0.0"
 junit = "5.9.3"
 flyway = "11.10.5"
 postgresql = "42.7.7"
+jbcrypt = "0.4"
 
 [libraries]
 jakartaee-api = { group = "jakarta.platform", name = "jakarta.jakartaee-api", version.ref = "jakarta" }
@@ -11,6 +12,7 @@ junit-bom = { group = "org.junit", name = "junit-bom", version.ref = "junit" }
 junit-jupiter = { group = "org.junit.jupiter", name = "junit-jupiter" }
 junit-platform-launcher = { group = "org.junit.platform", name = "junit-platform-launcher" }
 postgresql = { group = "org.postgresql", name = "postgresql", version.ref = "postgresql" }
+jbcrypt = { group = "org.mindrot", name = "jbcrypt", version.ref = "jbcrypt" }
 
 [plugins]
 flyway = { id = "org.flywaydb.flyway", version.ref = "flyway" }

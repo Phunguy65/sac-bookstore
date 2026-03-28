@@ -39,6 +39,7 @@ flyway {
 
 dependencies {
     compileOnly(libs.jakartaee.api)
+    implementation(libs.jbcrypt)
     runtimeOnly(libs.postgresql)
 
     testImplementation(libs.jakartaee.api)

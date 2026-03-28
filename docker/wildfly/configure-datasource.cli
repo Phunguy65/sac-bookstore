@@ -1,0 +1,17 @@
+embed-server --server-config=standalone-full.xml --std-out=echo
+
+if (outcome != success) of /subsystem=datasources/jdbc-driver=postgresql:read-resource
+    /subsystem=datasources/jdbc-driver=postgresql:add(driver-name=postgresql,driver-module-name=org.postgresql,driver-class-name=org.postgresql.Driver,driver-xa-datasource-class-name=org.postgresql.xa.PGXADataSource)
+end-if
+
+if (outcome != success) of /subsystem=datasources/data-source=BookstoreDS:read-resource
+    data-source add --name=BookstoreDS --jndi-name=java:jboss/datasources/bookstore --driver-name=postgresql --connection-url=${env.DB_URL:jdbc:postgresql://postgres:5432/bookstore} --user-name=${env.DB_USER:bookstore} --password=${env.DB_PASSWORD:bookstore} --jta=true --use-ccm=true --enabled=true --min-pool-size=2 --max-pool-size=10
+else
+    /subsystem=datasources/data-source=BookstoreDS:write-attribute(name=jndi-name,value=java:jboss/datasources/bookstore)
+    /subsystem=datasources/data-source=BookstoreDS:write-attribute(name=connection-url,value="${env.DB_URL:jdbc:postgresql://postgres:5432/bookstore}")
+    /subsystem=datasources/data-source=BookstoreDS:write-attribute(name=user-name,value="${env.DB_USER:bookstore}")
+    /subsystem=datasources/data-source=BookstoreDS:write-attribute(name=password,value="${env.DB_PASSWORD:bookstore}")
+    /subsystem=datasources/data-source=BookstoreDS:enable
+end-if
+
+stop-embedded-server

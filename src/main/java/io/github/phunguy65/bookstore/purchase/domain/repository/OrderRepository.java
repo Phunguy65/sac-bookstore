@@ -10,6 +10,8 @@ import java.util.Optional;
 public interface OrderRepository {
     Optional<Order> findById(OrderId orderId);
 
+    Optional<Order> findByCustomerIdAndId(CustomerId customerId, OrderId orderId);
+
     List<Order> findByCustomerId(CustomerId customerId);
 
     Order save(Order order);

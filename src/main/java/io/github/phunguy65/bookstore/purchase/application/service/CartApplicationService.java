@@ -10,6 +10,7 @@ import io.github.phunguy65.bookstore.shared.domain.valueobject.CustomerId;
 import io.github.phunguy65.bookstore.shared.domain.valueobject.Money;
 import io.github.phunguy65.bookstore.shared.domain.valueobject.Quantity;
 import io.github.phunguy65.bookstore.shared.domain.validation.FieldValidationException;
+import io.github.phunguy65.bookstore.shared.domain.validation.Require;
 import jakarta.ejb.Stateless;
 import jakarta.inject.Inject;
 
@@ -40,6 +41,7 @@ public class CartApplicationService {
 
     public CartActionResult addBook(CustomerId customerId, long bookIdValue, int quantityValue) {
         try {
+            Require.positive(quantityValue, "quantity");
             Book book = requireAvailableBook(new BookId(bookIdValue));
             Quantity requestedQuantity = new Quantity(quantityValue);
             Cart cart = cartRepository.findByCustomerId(customerId).orElseGet(() -> emptyCart(customerId));
@@ -76,6 +78,7 @@ public class CartApplicationService {
 
     public CartActionResult updateQuantity(CustomerId customerId, long bookIdValue, int quantityValue) {
         try {
+            Require.positive(quantityValue, "quantity");
             BookId bookId = new BookId(bookIdValue);
             Quantity quantity = new Quantity(quantityValue);
             Book book = requireAvailableBook(bookId);

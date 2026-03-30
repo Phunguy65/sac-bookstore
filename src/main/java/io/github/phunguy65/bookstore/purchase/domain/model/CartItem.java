@@ -20,6 +20,7 @@ public record CartItem(
     public CartItem {
         Require.notNull(bookId, "bookId");
         Require.notNull(quantity, "quantity");
+        Require.positive(quantity.value(), "quantity");
         Require.notNull(unitPriceSnapshot, "unitPriceSnapshot");
         Require.nonNegative(version, "version");
         Require.notNull(createdAt, "createdAt");

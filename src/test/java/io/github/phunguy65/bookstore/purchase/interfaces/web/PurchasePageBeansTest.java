@@ -1,6 +1,8 @@
 package io.github.phunguy65.bookstore.purchase.interfaces.web;
 
 import io.github.phunguy65.bookstore.purchase.application.service.CartActionResult;
+import io.github.phunguy65.bookstore.purchase.application.service.AccountCatalogApplicationService;
+import io.github.phunguy65.bookstore.purchase.application.service.CatalogBookView;
 import io.github.phunguy65.bookstore.purchase.application.service.CartApplicationService;
 import io.github.phunguy65.bookstore.purchase.application.service.CartView;
 import io.github.phunguy65.bookstore.purchase.application.service.CheckoutAddressInput;
@@ -14,10 +16,15 @@ import io.github.phunguy65.bookstore.purchase.application.service.OrderAddressVi
 import io.github.phunguy65.bookstore.purchase.application.service.OrderDetailView;
 import io.github.phunguy65.bookstore.purchase.application.service.OrderItemDetailView;
 import io.github.phunguy65.bookstore.purchase.domain.valueobject.OrderStatus;
+import io.github.phunguy65.bookstore.book.domain.valueobject.AuthorName;
+import io.github.phunguy65.bookstore.book.domain.valueobject.BookDescription;
+import io.github.phunguy65.bookstore.book.domain.valueobject.BookTitle;
+import io.github.phunguy65.bookstore.book.domain.valueobject.Isbn;
 import io.github.phunguy65.bookstore.shared.domain.valueobject.BookId;
 import io.github.phunguy65.bookstore.shared.domain.valueobject.CustomerId;
 import io.github.phunguy65.bookstore.shared.domain.valueobject.Money;
 import io.github.phunguy65.bookstore.shared.domain.valueobject.OrderId;
+import io.github.phunguy65.bookstore.shared.domain.valueobject.Quantity;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -33,6 +40,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class PurchasePageBeansTest {
     @Test
     void jspResolvedPurchaseBeansUseDependentScope() {
+        assertDependentScope(AccountHomePageBean.class);
         assertDependentScope(CartPageBean.class);
         assertDependentScope(CheckoutPageBean.class);
         assertDependentScope(OrderHistoryPageBean.class);
@@ -41,6 +49,7 @@ class PurchasePageBeansTest {
 
     @Test
     void constructorInjectedPurchaseBeansDeclareRequiredDependencies() {
+        assertSingleConstructorDependency(AccountHomePageBean.class, AccountCatalogApplicationService.class);
         assertSingleConstructorDependency(CartPageBean.class, CartApplicationService.class);
         assertSingleConstructorDependency(CheckoutPageBean.class, CheckoutApplicationService.class);
         assertSingleConstructorDependency(OrderHistoryPageBean.class, OrderQueryApplicationService.class);
@@ -48,36 +57,135 @@ class PurchasePageBeansTest {
     }
 
     @Test
-    void cartPageShowsInlineErrorForInvalidInput() {
+    void accountHomeShowsBooksOnGet() {
+        StubAccountCatalogApplicationService service = new StubAccountCatalogApplicationService();
+        service.books = List.of(book(11L, "Clean Code", 3), book(12L, "DDD", 0));
+        AccountHomePageBean bean = new AccountHomePageBean(service);
+        ServletApiTestSupport.TestRequestContext requestContext = ServletApiTestSupport.request("GET", "/bookstore")
+                .authenticated(1L);
+
+        AccountHomePageModel model = bean.handle(requestContext.proxy(), ServletApiTestSupport.response().proxy());
+
+        assertEquals(2, model.getBooks().size());
+        assertEquals(0, model.getBooks().get(1).availableStock().value());
+        assertEquals("1", model.getQuantityValue(11L));
+        assertNull(model.getErrorMessage());
+    }
+
+    @Test
+    void accountHomeMapsQuantityValidationErrorToSubmittedBook() {
+        StubAccountCatalogApplicationService service = new StubAccountCatalogApplicationService();
+        service.books = List.of(book(11L, "Clean Code", 3));
+        service.result = CartActionResult.failure("So luong khong hop le.", java.util.Map.of("quantity", "So luong khong hop le."));
+        AccountHomePageBean bean = new AccountHomePageBean(service);
+        ServletApiTestSupport.TestRequestContext requestContext = ServletApiTestSupport.request("POST", "/bookstore")
+                .authenticated(1L)
+                .parameter("bookId", "11")
+                .parameter("quantity", "0");
+
+        AccountHomePageModel model = bean.handle(requestContext.proxy(), ServletApiTestSupport.response().proxy());
+
+        assertTrue(model.hasLineQuantityError(11L));
+        assertEquals("So luong khong hop le.", model.getLineQuantityError());
+        assertEquals("0", model.getQuantityValue(11L));
+        assertNull(model.getInfoMessage());
+    }
+
+    @Test
+    void accountHomeRejectsInvalidBookId() {
+        StubAccountCatalogApplicationService service = new StubAccountCatalogApplicationService();
+        service.books = List.of(book(11L, "Clean Code", 3));
+        AccountHomePageBean bean = new AccountHomePageBean(service);
+        ServletApiTestSupport.TestRequestContext requestContext = ServletApiTestSupport.request("POST", "/bookstore")
+                .authenticated(1L)
+                .parameter("bookId", "abc")
+                .parameter("quantity", "2");
+
+        AccountHomePageModel model = bean.handle(requestContext.proxy(), ServletApiTestSupport.response().proxy());
+
+        assertEquals("Ma sach khong hop le.", model.getErrorMessage());
+        assertNull(model.getInfoMessage());
+    }
+
+    @Test
+    void accountHomeRejectsMissingQuantity() {
+        StubAccountCatalogApplicationService service = new StubAccountCatalogApplicationService();
+        service.books = List.of(book(11L, "Clean Code", 3));
+        AccountHomePageBean bean = new AccountHomePageBean(service);
+        ServletApiTestSupport.TestRequestContext requestContext = ServletApiTestSupport.request("POST", "/bookstore")
+                .authenticated(1L)
+                .parameter("bookId", "11");
+
+        AccountHomePageModel model = bean.handle(requestContext.proxy(), ServletApiTestSupport.response().proxy());
+
+        assertTrue(model.hasLineQuantityError(11L));
+        assertEquals("So luong khong hop le.", model.getLineQuantityError());
+        assertNull(model.getInfoMessage());
+    }
+
+    @Test
+    void accountHomeShowsSuccessMessageForAdd() {
+        StubAccountCatalogApplicationService service = new StubAccountCatalogApplicationService();
+        service.books = List.of(book(11L, "Clean Code", 3));
+        service.result = CartActionResult.success();
+        AccountHomePageBean bean = new AccountHomePageBean(service);
+        ServletApiTestSupport.TestRequestContext requestContext = ServletApiTestSupport.request("POST", "/bookstore")
+                .authenticated(1L)
+                .parameter("bookId", "11")
+                .parameter("quantity", "2");
+
+        AccountHomePageModel model = bean.handle(requestContext.proxy(), ServletApiTestSupport.response().proxy());
+
+        assertEquals("Da them sach vao gio hang.", model.getInfoMessage());
+        assertNull(model.getErrorMessage());
+    }
+
+    @Test
+    void cartPageShowsInlineErrorForInvalidUpdateInput() {
+        StubCartApplicationService service = new StubCartApplicationService();
+        CartPageBean bean = new CartPageBean(service);
+        ServletApiTestSupport.TestRequestContext requestContext = ServletApiTestSupport.request("POST", "/bookstore")
+                .authenticated(1L)
+                .parameter("action", "update")
+                .parameter("bookId", "11")
+                .parameter("quantity", "abc");
+
+        CartPageModel model = bean.handle(requestContext.proxy(), ServletApiTestSupport.response().proxy());
+
+        assertEquals("So luong khong hop le.", model.getErrorMessage());
+        assertEquals("So luong khong hop le.", model.getLineQuantityError());
+        assertNull(model.getInfoMessage());
+    }
+
+    @Test
+    void cartPageRejectsAddAction() {
         StubCartApplicationService service = new StubCartApplicationService();
         CartPageBean bean = new CartPageBean(service);
         ServletApiTestSupport.TestRequestContext requestContext = ServletApiTestSupport.request("POST", "/bookstore")
                 .authenticated(1L)
                 .parameter("action", "add")
-                .parameter("bookId", "abc")
-                .parameter("quantity", "1");
+                .parameter("bookId", "11")
+                .parameter("quantity", "2");
 
         CartPageModel model = bean.handle(requestContext.proxy(), ServletApiTestSupport.response().proxy());
 
-        assertEquals("Ma sach khong hop le.", model.getErrorMessage());
-        assertEquals("Ma sach khong hop le.", model.getAddBookIdError());
+        assertEquals("Hanh dong gio hang khong hop le.", model.getErrorMessage());
         assertNull(model.getInfoMessage());
     }
 
     @Test
-    void cartPageShowsSuccessMessageForMutation() {
+    void cartPageRejectsMissingAction() {
         StubCartApplicationService service = new StubCartApplicationService();
-        service.result = CartActionResult.success();
         CartPageBean bean = new CartPageBean(service);
         ServletApiTestSupport.TestRequestContext requestContext = ServletApiTestSupport.request("POST", "/bookstore")
                 .authenticated(1L)
-                .parameter("action", "remove")
-                .parameter("bookId", "11");
+                .parameter("bookId", "11")
+                .parameter("quantity", "2");
 
         CartPageModel model = bean.handle(requestContext.proxy(), ServletApiTestSupport.response().proxy());
 
-        assertEquals("Gio hang da duoc cap nhat.", model.getInfoMessage());
-        assertNull(model.getErrorMessage());
+        assertEquals("Hanh dong gio hang khong hop le.", model.getErrorMessage());
+        assertNull(model.getInfoMessage());
     }
 
     @Test
@@ -240,6 +348,33 @@ class PurchasePageBeansTest {
         public CartActionResult removeBook(CustomerId customerId, long bookIdValue) {
             return result;
         }
+    }
+
+    private static final class StubAccountCatalogApplicationService extends AccountCatalogApplicationService {
+        private List<CatalogBookView> books = List.of();
+        private CartActionResult result = CartActionResult.failure("failure", java.util.Map.of());
+
+        @Override
+        public List<CatalogBookView> getActiveBooks() {
+            return books;
+        }
+
+        @Override
+        public CartActionResult addBook(CustomerId customerId, long bookIdValue, int quantityValue) {
+            return result;
+        }
+    }
+
+    private static CatalogBookView book(long id, String title, int stock) {
+        return new CatalogBookView(
+                new BookId(id),
+                new Isbn("9786041234567"),
+                new BookTitle(title),
+                new AuthorName("Tac gia " + id),
+                new BookDescription("Mo ta sach " + id),
+                new Money(new BigDecimal("12.50")),
+                new Quantity(stock)
+        );
     }
 
     private static final class StubCheckoutApplicationService extends CheckoutApplicationService {

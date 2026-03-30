@@ -25,8 +25,6 @@ public class CartPageBean {
         var customerId = AuthSession.getCustomerId(request);
         String errorMessage = null;
         String infoMessage = mapInfoMessage(request.getParameter("info"));
-        String addBookIdError = null;
-        String addQuantityError = null;
         Long lineErrorBookId = null;
         String lineQuantityError = null;
 
@@ -48,10 +46,6 @@ public class CartPageBean {
             } else {
                 String message = result.getErrorMessage();
                 errorMessage = message;
-                if ("add".equals(action)) {
-                    addBookIdError = result.getFieldError("bookId");
-                    addQuantityError = result.getFieldError("quantity");
-                }
                 if ("update".equals(action)) {
                     lineQuantityError = result.getFieldError("quantity");
                     if (lineQuantityError != null) {
@@ -62,7 +56,7 @@ public class CartPageBean {
         }
 
         CartView cart = cartApplicationService.getCart(customerId);
-        return new CartPageModel(cart, errorMessage, infoMessage, addBookIdError, addQuantityError, lineErrorBookId, lineQuantityError);
+        return new CartPageModel(cart, errorMessage, infoMessage, lineErrorBookId, lineQuantityError);
     }
 
     private String mapInfoMessage(String value) {
@@ -86,11 +80,9 @@ public class CartPageBean {
 
     private CartActionResult handleMutation(HttpServletRequest request) {
         String action = trimToEmpty(request.getParameter("action"));
-        long bookId = parseLong(request.getParameter("bookId"));
         return switch (action) {
-            case "add" -> cartApplicationService.addBook(AuthSession.getCustomerId(request), bookId, parseInt(request.getParameter("quantity")));
-            case "update" -> cartApplicationService.updateQuantity(AuthSession.getCustomerId(request), bookId, parseInt(request.getParameter("quantity")));
-            case "remove" -> cartApplicationService.removeBook(AuthSession.getCustomerId(request), bookId);
+            case "update" -> cartApplicationService.updateQuantity(AuthSession.getCustomerId(request), parseLong(request.getParameter("bookId")), parseInt(request.getParameter("quantity")));
+            case "remove" -> cartApplicationService.removeBook(AuthSession.getCustomerId(request), parseLong(request.getParameter("bookId")));
             default -> CartActionResult.failure("Hanh dong gio hang khong hop le.");
         };
     }

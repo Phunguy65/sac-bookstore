@@ -27,6 +27,19 @@ class CartApplicationServiceTest {
     }
 
     @Test
+    void getCartReturnsEmptyCartForNewCustomer() {
+        CartApplicationService service = new CartApplicationService(
+                new PurchaseServiceTestSupport.InMemoryBookRepository(),
+                new PurchaseServiceTestSupport.InMemoryCartRepository()
+        );
+
+        CartView cart = service.getCart(new CustomerId(99L));
+
+        assertTrue(cart.isEmpty());
+        assertTrue(cart.items().isEmpty());
+    }
+
+    @Test
     void addExistingBookIncrementsQuantityInsteadOfDuplicating() {
         var bookRepository = new PurchaseServiceTestSupport.InMemoryBookRepository();
         var cartRepository = new PurchaseServiceTestSupport.InMemoryCartRepository();
@@ -97,6 +110,19 @@ class CartApplicationServiceTest {
     }
 
     @Test
+    void rejectsAddingBookWithZeroStock() {
+        var bookRepository = new PurchaseServiceTestSupport.InMemoryBookRepository();
+        var cartRepository = new PurchaseServiceTestSupport.InMemoryCartRepository();
+        bookRepository.put(PurchaseServiceTestSupport.book(11L, "Clean Code", 0, true, "12.50"));
+        CartApplicationService service = new CartApplicationService(bookRepository, cartRepository);
+
+        CartActionResult result = service.addBook(CUSTOMER_ID, 11L, 1);
+
+        assertFalse(result.isSuccess());
+        assertEquals("Sach nay da het hang.", result.getErrorMessage());
+    }
+
+    @Test
     void rejectsUpdateQuantityThatExceedsStock() {
         var bookRepository = new PurchaseServiceTestSupport.InMemoryBookRepository();
         var cartRepository = new PurchaseServiceTestSupport.InMemoryCartRepository();
@@ -108,6 +134,20 @@ class CartApplicationServiceTest {
 
         assertFalse(result.isSuccess());
         assertEquals("So luong vuot qua ton kho hien tai.", result.getErrorMessage());
+    }
+
+    @Test
+    void rejectsUpdateQuantityOnZeroStockBook() {
+        var bookRepository = new PurchaseServiceTestSupport.InMemoryBookRepository();
+        var cartRepository = new PurchaseServiceTestSupport.InMemoryCartRepository();
+        bookRepository.put(PurchaseServiceTestSupport.book(11L, "Clean Code", 0, true, "12.50"));
+        cartRepository.put(PurchaseServiceTestSupport.cart(CUSTOMER_ID, PurchaseServiceTestSupport.cartItem(1L, 11L, 1, "12.50")));
+        CartApplicationService service = new CartApplicationService(bookRepository, cartRepository);
+
+        CartActionResult result = service.updateQuantity(CUSTOMER_ID, 11L, 2);
+
+        assertFalse(result.isSuccess());
+        assertEquals("Sach nay da het hang.", result.getErrorMessage());
     }
 
     @Test

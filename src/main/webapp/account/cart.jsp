@@ -26,10 +26,10 @@
     <div class="toolbar">
         <div>
             <h1>Gio hang</h1>
-            <p class="muted">Them sach theo ma sach, cap nhat so luong va chuan bi dat don COD.</p>
+            <p class="muted">Ra soat cac sach da chon, cap nhat so luong va chuan bi dat don COD.</p>
         </div>
         <div class="actions">
-            <a class="link" href="<%= request.getContextPath() %>/account/index.jsp">Tai khoan</a>
+            <a class="link" href="<%= request.getContextPath() %>/account/index.jsp">Chon sach</a>
             <% if (!form.getCart().isEmpty()) { %>
             <a class="primary" href="<%= request.getContextPath() %>/account/checkout.jsp">Thanh toan</a>
             <% } %>
@@ -43,22 +43,15 @@
     <div class="notice info" role="status"><%= HtmlEscaper.escape(form.getInfoMessage()) %></div>
     <% } %>
 
-    <form method="post" class="row" onsubmit="const btn=this.querySelector('button[type=submit]'); const status=document.getElementById('cart-add-status'); if (btn) { btn.disabled=true; btn.innerText='Dang xu ly...'; } if (status) { status.innerText='Dang xu ly...'; }">
-        <input type="hidden" name="action" value="add">
-        <label class="sr-only" for="add-book-id">Ma sach</label>
-        <input id="add-book-id" class="purchase-input purchase-width-book-id" type="number" min="1" name="bookId" placeholder="Ma sach" required aria-label="Ma sach" <%= form.getAddBookIdError() != null ? "aria-invalid=\"true\" aria-describedby=\"add-book-id-error\"" : "" %>>
-        <label class="sr-only" for="add-quantity">So luong</label>
-        <input id="add-quantity" class="purchase-input purchase-width-quantity" type="number" min="1" name="quantity" value="1" required aria-label="So luong" <%= form.getAddQuantityError() != null ? "aria-invalid=\"true\" aria-describedby=\"add-quantity-error\"" : "" %>>
-        <button class="primary" type="submit">Them vao gio</button>
-    </form>
-    <% if (form.getAddBookIdError() != null) { %><div id="add-book-id-error" class="field-error"><%= HtmlEscaper.escape(form.getAddBookIdError()) %></div><% } %>
-    <% if (form.getAddQuantityError() != null) { %><div id="add-quantity-error" class="field-error"><%= HtmlEscaper.escape(form.getAddQuantityError()) %></div><% } %>
-    <span id="cart-add-status" class="sr-only" aria-live="polite"></span>
+    <div class="panel">
+        <p class="muted">Muon them sach moi? Hay quay lai trang tai khoan de chon sach tu danh muc hien co.</p>
+        <a class="link" href="<%= request.getContextPath() %>/account/index.jsp">Mo danh muc sach</a>
+    </div>
 
     <% if (form.getCart().isEmpty()) { %>
     <div class="empty-state">
         <p class="muted">Gio hang cua ban dang trong.</p>
-        <a class="link" href="<%= request.getContextPath() %>/account/index.jsp">Ve tai khoan</a>
+        <a class="link" href="<%= request.getContextPath() %>/account/index.jsp">Chon sach ngay</a>
     </div>
     <% } else { %>
     <table class="purchase-table">
@@ -68,7 +61,7 @@
             <th>Don gia</th>
             <th>So luong</th>
             <th>Tam tinh</th>
-            <th></th>
+            <th>Thao tac</th>
         </tr>
         </thead>
         <tbody>

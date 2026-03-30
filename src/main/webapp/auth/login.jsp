@@ -15,36 +15,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dang nhap - Bookstore</title>
+    <link rel="stylesheet" href="<%= request.getContextPath() %>/assets/purchase-shared.css">
     <style>
-        :root {
-            color-scheme: light;
-            --bg: #f4ecdf;
-            --panel: #fffaf3;
-            --border: #d9c7b1;
-            --text: #2f271e;
-            --muted: #6d6258;
-            --accent: #8b4f29;
-            --accent-strong: #6d3718;
-            --on-accent: #fffaf3;
-            --error-bg: #f9dfd8;
-            --error-text: #842029;
-            --info-bg: #e7f4ea;
-            --info-text: #295b34;
-            --panel-shadow: 0 18px 40px rgba(64, 44, 28, 0.12);
-        }
-
         * {
             box-sizing: border-box;
         }
 
         body {
-            margin: 0;
-            min-height: 100vh;
-            font-family: Georgia, "Times New Roman", serif;
-            background:
-                radial-gradient(circle at top, rgba(140, 79, 43, 0.2), transparent 32%),
-                linear-gradient(135deg, #f8f3eb 0%, #efe2d1 100%);
-            color: var(--text);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -53,11 +30,7 @@
 
         .panel {
             width: min(100%, 460px);
-            background: var(--panel);
-            border: 1px solid var(--border);
-            border-radius: 20px;
             padding: 32px;
-            box-shadow: var(--panel-shadow);
         }
 
         h1 {
@@ -91,55 +64,15 @@
             border-color: var(--accent);
         }
 
-        .notice {
-            border-radius: 12px;
-            padding: 12px 14px;
-            margin-bottom: 16px;
-        }
-
-        .notice.error {
-            background: var(--error-bg);
-            color: var(--error-text);
-        }
-
-        .notice.info {
-            background: var(--info-bg);
-            color: var(--info-text);
-        }
-
         button {
             width: 100%;
             margin-top: 18px;
-            border: 0;
-            border-radius: 999px;
-            min-height: 44px;
-            padding: 13px 16px;
-            font: inherit;
             font-weight: 700;
-            color: var(--on-accent);
-            background: linear-gradient(135deg, var(--accent), var(--accent-strong));
             cursor: pointer;
         }
 
         button:hover {
             filter: brightness(0.95);
-        }
-
-        button:disabled {
-            opacity: 0.65;
-            cursor: not-allowed;
-        }
-
-        .sr-only {
-            position: absolute;
-            width: 1px;
-            height: 1px;
-            padding: 0;
-            margin: -1px;
-            overflow: hidden;
-            clip: rect(0, 0, 0, 0);
-            white-space: nowrap;
-            border: 0;
         }
 
         .links {
@@ -161,18 +94,22 @@
             color: var(--accent);
         }
 
-        a:focus-visible,
-        button:focus-visible,
-        input:focus-visible {
-            outline: 2px solid var(--accent);
-            outline-offset: 3px;
+        .panel .notice {
+            margin-bottom: 16px;
         }
     </style>
 </head>
-<body>
+<body class="purchase-page purchase-page-soft">
 <main class="panel">
     <h1>Dang nhap</h1>
     <p>Truy cap khu vuc tai khoan cua ban de quan ly don hang va gio hang.</p>
+    <% if (form.isShowDevCredentials()) { %>
+    <div class="notice info" role="status">
+        <strong>Tai khoan dev:</strong><br>
+        Email: <%= HtmlEscaper.escape(form.getDevEmail()) %><br>
+        Mat khau: <%= HtmlEscaper.escape(form.getDevPassword()) %>
+    </div>
+    <% } %>
     <% if (form.getErrorMessage() != null) { %>
     <div class="notice error" role="alert"><%= HtmlEscaper.escape(form.getErrorMessage()) %></div>
     <% } %>

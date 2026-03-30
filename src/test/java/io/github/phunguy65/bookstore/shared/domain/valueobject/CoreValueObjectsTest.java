@@ -21,8 +21,15 @@ class CoreValueObjectsTest {
     }
 
     @Test
-    void quantityRejectsZero() {
-        assertThrows(IllegalArgumentException.class, () -> new Quantity(0));
+    void quantityRejectsNegativeValue() {
+        assertThrows(IllegalArgumentException.class, () -> new Quantity(-1));
+    }
+
+    @Test
+    void quantityAcceptsZero() {
+        Quantity quantity = new Quantity(0);
+
+        assertEquals(0, quantity.value());
     }
 
     @Test

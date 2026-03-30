@@ -1,135 +1,97 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
 <%@ page import="io.github.phunguy65.bookstore.auth.interfaces.web.AuthSession" %>
+<%@ page import="io.github.phunguy65.bookstore.auth.interfaces.web.HtmlEscaper" %>
+<%@ page import="io.github.phunguy65.bookstore.purchase.application.service.CatalogBookView" %>
+<%@ page import="io.github.phunguy65.bookstore.purchase.interfaces.web.AccountHomePageBean" %>
+<%@ page import="io.github.phunguy65.bookstore.purchase.interfaces.web.AccountHomePageModel" %>
+<%@ page import="jakarta.enterprise.inject.spi.CDI" %>
 <%@ include file="/WEB-INF/jspf/auth/require-auth.jspf" %>
+<%
+    AccountHomePageModel form = CDI.current().select(AccountHomePageBean.class).get().handle(request, response);
+%>
 <!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tai khoan - Bookstore</title>
+    <link rel="stylesheet" href="<%= request.getContextPath() %>/assets/purchase-shared.css">
     <style>
-        :root {
-            color-scheme: light;
-            --bg: #f4ecdf;
-            --panel: #fffaf3;
-            --border: #d9c7b1;
-            --text: #2f271e;
-            --muted: #6d6258;
-            --accent: #8b4f29;
-            --accent-strong: #6d3718;
-            --on-accent: #fffaf3;
-            --panel-shadow: 0 18px 40px rgba(64, 44, 28, 0.12);
-        }
-
-        body {
-            margin: 0;
-            min-height: 100vh;
-            font-family: Georgia, "Times New Roman", serif;
-            background: linear-gradient(180deg, #f9f5ef 0%, #f0e5d7 100%);
-            color: var(--text);
-            padding: 32px 20px;
-        }
-
-        .shell {
-            max-width: 760px;
-            margin: 0 auto;
-            background: var(--panel);
-            border: 1px solid var(--border);
-            border-radius: 24px;
-            padding: 28px;
-            box-shadow: var(--panel-shadow);
-        }
-
-        h1 {
-            margin-top: 0;
-        }
-
-        .meta {
-            color: var(--muted);
-            line-height: 1.6;
-        }
-
-        .actions {
-            margin-top: 24px;
-            display: flex;
-            gap: 12px;
-            flex-wrap: wrap;
-        }
-
-        a,
-        button {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 999px;
-            min-height: 44px;
-            padding: 12px 18px;
-            font: inherit;
-        }
-
-        a {
-            text-decoration: none;
-            border: 1px solid var(--border);
-            color: var(--text);
-        }
-
-        button {
-            border: 0;
-            background: var(--accent);
-            color: var(--on-accent);
-            cursor: pointer;
-        }
-
-        a:hover {
-            border-color: var(--accent);
-            color: var(--accent-strong);
-        }
-
-        button:hover {
-            background: var(--accent-strong);
-        }
-
-        a:focus-visible,
-        button:focus-visible {
-            outline: 2px solid var(--accent);
-            outline-offset: 3px;
-        }
-
-        button:disabled {
-            opacity: 0.65;
-            cursor: not-allowed;
-        }
-
-        .sr-only {
-            position: absolute;
-            width: 1px;
-            height: 1px;
-            padding: 0;
-            margin: -1px;
-            overflow: hidden;
-            clip: rect(0, 0, 0, 0);
-            white-space: nowrap;
-            border: 0;
+        .catalog-grid { display:grid; gap:18px; margin-top:24px; }
+        .catalog-card { display:grid; grid-template-columns:minmax(0, 1fr) auto; gap:18px; align-items:start; }
+        .catalog-meta { display:flex; flex-wrap:wrap; gap:10px 14px; margin-top:12px; }
+        .catalog-meta span { color:var(--muted); }
+        .catalog-description { margin-top:12px; line-height:1.6; }
+        .catalog-form { min-width:220px; display:flex; flex-direction:column; gap:10px; align-items:stretch; }
+        .catalog-form .field-error { margin-top:0; }
+        .catalog-out-of-stock { font-weight:700; color:var(--error-text); }
+        @media (max-width: 760px) {
+            .catalog-card { grid-template-columns:1fr; }
+            .catalog-form { min-width:0; }
         }
     </style>
 </head>
-<body>
-<main class="shell">
-    <h1>Xin chao ban</h1>
-    <p class="meta">
-        Ban da dang nhap thanh cong. Session hien dang luu customer id:
-        <strong><%= AuthSession.getCustomerId(request).value() %></strong>
-    </p>
-    <p class="meta">Tu day ban co the mo gio hang, thanh toan don COD va theo doi lich su mua hang cua minh.</p>
-    <div class="actions">
-        <a href="<%= request.getContextPath() %>/index.jsp">Ve trang chu</a>
-        <a href="<%= request.getContextPath() %>/account/cart.jsp">Mo gio hang</a>
-        <a href="<%= request.getContextPath() %>/account/orders.jsp">Xem don hang</a>
-        <form method="post" action="<%= request.getContextPath() %>/auth/logout.jsp" onsubmit="const btn=this.querySelector('button[type=submit]'); const status=document.getElementById('account-logout-status'); if (btn) { btn.disabled=true; btn.innerText='Dang xu ly...'; } if (status) { status.innerText='Dang xu ly...'; }">
-            <button type="submit">Dang xuat</button>
-        </form>
-        <span id="account-logout-status" class="sr-only" aria-live="polite"></span>
+<body class="purchase-page purchase-page-soft">
+<main class="shell purchase-shell-wide purchase-shell-shadow">
+    <div class="toolbar">
+        <div>
+            <h1>Xin chao ban</h1>
+            <p class="muted">Chon sach tu danh muc ben duoi, them vao gio hang va tiep tuc dat don COD.</p>
+        </div>
+        <div class="actions">
+            <a class="link" href="<%= request.getContextPath() %>/index.jsp">Ve trang chu</a>
+            <a class="link" href="<%= request.getContextPath() %>/account/cart.jsp">Mo gio hang</a>
+            <a class="link" href="<%= request.getContextPath() %>/account/orders.jsp">Xem don hang</a>
+            <form method="post" action="<%= request.getContextPath() %>/auth/logout.jsp" onsubmit="const btn=this.querySelector('button[type=submit]'); const status=document.getElementById('account-logout-status'); if (btn) { btn.disabled=true; btn.innerText='Dang xu ly...'; } if (status) { status.innerText='Dang xu ly...'; }">
+                <button class="primary" type="submit">Dang xuat</button>
+            </form>
+            <span id="account-logout-status" class="sr-only" aria-live="polite"></span>
+        </div>
     </div>
+
+    <% if (form.getErrorMessage() != null) { %>
+    <div class="notice error" role="alert"><%= HtmlEscaper.escape(form.getErrorMessage()) %></div>
+    <% } %>
+    <% if (form.getInfoMessage() != null) { %>
+    <div class="notice info" role="status"><%= HtmlEscaper.escape(form.getInfoMessage()) %></div>
+    <% } %>
+
+    <% if (form.getBooks().isEmpty()) { %>
+    <div class="empty-state panel">
+        <p class="muted">Hien chua co sach nao dang mo ban.</p>
+        <a class="link" href="<%= request.getContextPath() %>/account/cart.jsp">Xem gio hang</a>
+    </div>
+    <% } else { %>
+    <div class="catalog-grid">
+        <% for (CatalogBookView book : form.getBooks()) { %>
+        <section class="panel catalog-card">
+            <div>
+                <h2><%= HtmlEscaper.escape(book.title().value()) %></h2>
+                <div class="catalog-meta">
+                    <span>Tac gia: <strong><%= HtmlEscaper.escape(book.author().value()) %></strong></span>
+                    <span>ISBN: <strong><%= HtmlEscaper.escape(book.isbn().value()) %></strong></span>
+                    <span>Gia: <strong><%= book.price().amount() %></strong></span>
+                    <span>Ton kho: <strong><%= book.availableStock().value() %></strong></span>
+                </div>
+                <p class="catalog-description muted overflow-anywhere"><%= HtmlEscaper.escape(book.description().value()) %></p>
+            </div>
+            <form method="post" class="catalog-form" onsubmit="const btn=this.querySelector('button[type=submit]'); const status=document.getElementById('account-add-status-<%= book.bookId().value() %>'); if (btn && !btn.disabled) { btn.disabled=true; btn.innerText='Dang xu ly...'; } if (status) { status.innerText='Dang xu ly...'; }">
+                <input type="hidden" name="bookId" value="<%= book.bookId().value() %>">
+                <label for="quantity-<%= book.bookId().value() %>">So luong</label>
+                <input id="quantity-<%= book.bookId().value() %>" class="purchase-input" type="number" min="1" name="quantity" value="<%= HtmlEscaper.escape(form.getQuantityValue(book.bookId().value())) %>" required <%= form.hasLineQuantityError(book.bookId().value()) ? "aria-invalid=\"true\" aria-describedby=\"account-line-quantity-error-" + book.bookId().value() + "\"" : "" %> <%= book.availableStock().value() <= 0 ? "disabled" : "" %>>
+                <button class="primary" type="submit" <%= book.availableStock().value() <= 0 ? "disabled" : "" %>><%= book.availableStock().value() <= 0 ? "Het hang" : "Them vao gio" %></button>
+                <% if (book.availableStock().value() <= 0) { %>
+                <span class="catalog-out-of-stock">Tam het hang</span>
+                <% } %>
+                <% if (form.hasLineQuantityError(book.bookId().value())) { %>
+                <div id="account-line-quantity-error-<%= book.bookId().value() %>" class="field-error"><%= HtmlEscaper.escape(form.getLineQuantityError()) %></div>
+                <% } %>
+                <span id="account-add-status-<%= book.bookId().value() %>" class="sr-only" aria-live="polite"></span>
+            </form>
+        </section>
+        <% } %>
+    </div>
+    <% } %>
 </main>
 </body>
 </html>

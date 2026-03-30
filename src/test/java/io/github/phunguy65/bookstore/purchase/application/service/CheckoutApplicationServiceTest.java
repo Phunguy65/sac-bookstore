@@ -50,6 +50,26 @@ class CheckoutApplicationServiceTest {
     }
 
     @Test
+    void placeOrderKeepsCartUnitPriceSnapshotWhenBookPriceChangesBeforeCheckout() {
+        var bookRepository = new PurchaseServiceTestSupport.InMemoryBookRepository();
+        var cartRepository = new PurchaseServiceTestSupport.InMemoryCartRepository();
+        var addressRepository = new PurchaseServiceTestSupport.InMemoryAddressRepository();
+        var orderRepository = new PurchaseServiceTestSupport.InMemoryOrderRepository();
+        cartRepository.put(PurchaseServiceTestSupport.cart(CUSTOMER_ID, PurchaseServiceTestSupport.cartItem(1L, 11L, 2, "12.50")));
+        bookRepository.put(PurchaseServiceTestSupport.book(11L, "Clean Code", 8, true, "18.75"));
+        addressRepository.put(PurchaseServiceTestSupport.address(1L, CUSTOMER_ID, true));
+        CheckoutApplicationService service = new CheckoutApplicationService(cartRepository, bookRepository, addressRepository, orderRepository);
+
+        CheckoutResult result = service.placeOrder(CUSTOMER_ID, new CheckoutAddressInput("", "", "", "", "", "", "", "", ""));
+
+        assertTrue(result.isSuccess());
+        var savedOrder = orderRepository.findByCustomerId(CUSTOMER_ID).getFirst();
+        assertEquals("25.00", savedOrder.totalAmount().amount().toPlainString());
+        assertEquals("12.50", savedOrder.items().getFirst().unitPriceSnapshot().amount().toPlainString());
+        assertEquals("25.00", savedOrder.items().getFirst().lineTotal().amount().toPlainString());
+    }
+
+    @Test
     void failedOrderPlacementLeavesCartUnchangedAndDoesNotCreateDefaultAddress() {
         var bookRepository = new PurchaseServiceTestSupport.InMemoryBookRepository();
         var cartRepository = new PurchaseServiceTestSupport.InMemoryCartRepository();

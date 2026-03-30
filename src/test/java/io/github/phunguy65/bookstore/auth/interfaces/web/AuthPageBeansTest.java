@@ -1,6 +1,7 @@
 package io.github.phunguy65.bookstore.auth.interfaces.web;
 
 import io.github.phunguy65.bookstore.auth.application.service.AuthApplicationService;
+import io.github.phunguy65.bookstore.auth.application.service.DemoModeSettings;
 import io.github.phunguy65.bookstore.auth.application.service.LoginResult;
 import io.github.phunguy65.bookstore.auth.application.service.RegisterResult;
 import io.github.phunguy65.bookstore.auth.domain.model.Customer;
@@ -30,14 +31,14 @@ class AuthPageBeansTest {
 
     @Test
     void constructorInjectedAuthBeansDeclareRequiredDependencies() {
-        assertSingleConstructorDependency(LoginPageBean.class, AuthApplicationService.class);
+        assertConstructorDependencies(LoginPageBean.class, AuthApplicationService.class, DemoModeSettings.class);
         assertSingleConstructorDependency(RegisterPageBean.class, AuthApplicationService.class);
     }
 
     @Test
     void loginPageRedirectsAuthenticatedUser() throws IOException {
         StubAuthApplicationService service = new StubAuthApplicationService();
-        LoginPageBean bean = new LoginPageBean(service);
+        LoginPageBean bean = new LoginPageBean(service, new StubDemoModeConfig(false));
         ServletApiTestSupport.TestRequestContext requestContext = ServletApiTestSupport.request("GET", "/bookstore")
                 .authenticated(11L);
         ServletApiTestSupport.TestResponseContext responseContext = ServletApiTestSupport.response();
@@ -50,7 +51,7 @@ class AuthPageBeansTest {
     @Test
     void loginPageDisplaysEmptyFormOnGet() throws IOException {
         StubAuthApplicationService service = new StubAuthApplicationService();
-        LoginPageBean bean = new LoginPageBean(service);
+        LoginPageBean bean = new LoginPageBean(service, new StubDemoModeConfig(true));
         ServletApiTestSupport.TestRequestContext requestContext = ServletApiTestSupport.request("GET", "/bookstore");
         ServletApiTestSupport.TestResponseContext responseContext = ServletApiTestSupport.response();
 
@@ -60,12 +61,15 @@ class AuthPageBeansTest {
         assertEquals("", model.getEmail());
         assertEquals(null, model.getErrorMessage());
         assertEquals(null, model.getInfoMessage());
+        assertTrue(model.isShowDevCredentials());
+        assertEquals("dev@bookstore.local", model.getDevEmail());
+        assertEquals("dev123456", model.getDevPassword());
     }
 
     @Test
     void loginPageShowsRegisteredMessageOnGet() throws IOException {
         StubAuthApplicationService service = new StubAuthApplicationService();
-        LoginPageBean bean = new LoginPageBean(service);
+        LoginPageBean bean = new LoginPageBean(service, new StubDemoModeConfig(true));
         ServletApiTestSupport.TestRequestContext requestContext = ServletApiTestSupport.request("GET", "/bookstore")
                 .parameter("registered", "1");
         ServletApiTestSupport.TestResponseContext responseContext = ServletApiTestSupport.response();
@@ -75,12 +79,15 @@ class AuthPageBeansTest {
         assertFalse(responseContext.committed());
         assertEquals("Dang ky thanh cong. Vui long dang nhap.", model.getInfoMessage());
         assertEquals(null, model.getErrorMessage());
+        assertTrue(model.isShowDevCredentials());
+        assertEquals("dev@bookstore.local", model.getDevEmail());
+        assertEquals("dev123456", model.getDevPassword());
     }
 
     @Test
     void loginPageTreatsDeleteAsFormDisplay() throws IOException {
         StubAuthApplicationService service = new StubAuthApplicationService();
-        LoginPageBean bean = new LoginPageBean(service);
+        LoginPageBean bean = new LoginPageBean(service, new StubDemoModeConfig(false));
         ServletApiTestSupport.TestRequestContext requestContext = ServletApiTestSupport.request("DELETE", "/bookstore")
                 .parameter("email", "reader@example.com")
                 .parameter("password", "secret-123");
@@ -91,13 +98,16 @@ class AuthPageBeansTest {
         assertFalse(responseContext.committed());
         assertEquals("", model.getEmail());
         assertEquals(null, model.getErrorMessage());
+        assertFalse(model.isShowDevCredentials());
+        assertEquals(null, model.getDevEmail());
+        assertEquals(null, model.getDevPassword());
     }
 
     @Test
     void loginPageStoresSessionAndRedirectsOnSuccess() throws IOException {
         StubAuthApplicationService service = new StubAuthApplicationService();
         service.loginResult = LoginResult.success(customer());
-        LoginPageBean bean = new LoginPageBean(service);
+        LoginPageBean bean = new LoginPageBean(service, new StubDemoModeConfig(false));
         ServletApiTestSupport.TestRequestContext requestContext = ServletApiTestSupport.request("POST", "/bookstore")
                 .parameter("email", "reader@example.com")
                 .parameter("password", "secret-123");
@@ -113,7 +123,7 @@ class AuthPageBeansTest {
     void loginPageReturnsInlineErrorOnFailure() throws IOException {
         StubAuthApplicationService service = new StubAuthApplicationService();
         service.loginResult = LoginResult.failure("Bad credentials");
-        LoginPageBean bean = new LoginPageBean(service);
+        LoginPageBean bean = new LoginPageBean(service, new StubDemoModeConfig(true));
         ServletApiTestSupport.TestRequestContext requestContext = ServletApiTestSupport.request("POST", "/bookstore")
                 .parameter("email", "reader@example.com")
                 .parameter("password", "wrong");
@@ -125,13 +135,16 @@ class AuthPageBeansTest {
         assertEquals("reader@example.com", model.getEmail());
         assertEquals("Bad credentials", model.getErrorMessage());
         assertEquals(null, model.getInfoMessage());
+        assertTrue(model.isShowDevCredentials());
+        assertEquals("dev@bookstore.local", model.getDevEmail());
+        assertEquals("dev123456", model.getDevPassword());
     }
 
     @Test
     void loginPageConvertsMissingEmailToEmptyString() throws IOException {
         StubAuthApplicationService service = new StubAuthApplicationService();
         service.loginResult = LoginResult.failure("email must not be blank");
-        LoginPageBean bean = new LoginPageBean(service);
+        LoginPageBean bean = new LoginPageBean(service, new StubDemoModeConfig(true));
         ServletApiTestSupport.TestRequestContext requestContext = ServletApiTestSupport.request("POST", "/bookstore")
                 .parameter("password", "secret-123");
         ServletApiTestSupport.TestResponseContext responseContext = ServletApiTestSupport.response();
@@ -141,13 +154,16 @@ class AuthPageBeansTest {
         assertFalse(responseContext.committed());
         assertEquals("", model.getEmail());
         assertEquals("email must not be blank", model.getErrorMessage());
+        assertTrue(model.isShowDevCredentials());
+        assertEquals("dev@bookstore.local", model.getDevEmail());
+        assertEquals("dev123456", model.getDevPassword());
     }
 
     @Test
     void loginPageConvertsMissingPasswordToEmptyString() throws IOException {
         StubAuthApplicationService service = new StubAuthApplicationService();
         service.loginResult = LoginResult.failure("rawPassword must not be blank");
-        LoginPageBean bean = new LoginPageBean(service);
+        LoginPageBean bean = new LoginPageBean(service, new StubDemoModeConfig(true));
         ServletApiTestSupport.TestRequestContext requestContext = ServletApiTestSupport.request("POST", "/bookstore")
                 .parameter("email", "reader@example.com");
         ServletApiTestSupport.TestResponseContext responseContext = ServletApiTestSupport.response();
@@ -158,6 +174,24 @@ class AuthPageBeansTest {
         assertEquals("reader@example.com", model.getEmail());
         assertEquals("rawPassword must not be blank", model.getErrorMessage());
         assertEquals(null, model.getInfoMessage());
+        assertTrue(model.isShowDevCredentials());
+        assertEquals("dev@bookstore.local", model.getDevEmail());
+        assertEquals("dev123456", model.getDevPassword());
+    }
+
+    @Test
+    void loginPageHidesDevCredentialsWhenNotInDemoMode() throws IOException {
+        StubAuthApplicationService service = new StubAuthApplicationService();
+        LoginPageBean bean = new LoginPageBean(service, new StubDemoModeConfig(false));
+        ServletApiTestSupport.TestRequestContext requestContext = ServletApiTestSupport.request("GET", "/bookstore");
+        ServletApiTestSupport.TestResponseContext responseContext = ServletApiTestSupport.response();
+
+        LoginPageModel model = bean.handle(requestContext.proxy(), responseContext.proxy());
+
+        assertFalse(responseContext.committed());
+        assertFalse(model.isShowDevCredentials());
+        assertEquals(null, model.getDevEmail());
+        assertEquals(null, model.getDevPassword());
     }
 
     @Test
@@ -359,7 +393,7 @@ class AuthPageBeansTest {
     void loginPageTrimsEmailWhitespace() throws IOException {
         StubAuthApplicationService service = new StubAuthApplicationService();
         service.loginResult = LoginResult.failure("Bad credentials");
-        LoginPageBean bean = new LoginPageBean(service);
+        LoginPageBean bean = new LoginPageBean(service, new StubDemoModeConfig(false));
         ServletApiTestSupport.TestRequestContext requestContext = ServletApiTestSupport.request("POST", "/bookstore")
                 .parameter("email", "  reader@example.com  ")
                 .parameter("password", "secret-123");
@@ -436,6 +470,35 @@ class AuthPageBeansTest {
         assertEquals(1, beanClass.getDeclaredConstructors().length);
         assertEquals(1, beanClass.getDeclaredConstructors()[0].getParameterCount());
         assertEquals(dependencyType, beanClass.getDeclaredConstructors()[0].getParameterTypes()[0]);
+    }
+
+    private void assertConstructorDependencies(Class<?> beanClass, Class<?>... dependencyTypes) {
+        assertEquals(1, beanClass.getDeclaredConstructors().length);
+        assertEquals(dependencyTypes.length, beanClass.getDeclaredConstructors()[0].getParameterCount());
+        assertEquals(java.util.List.of(dependencyTypes), java.util.List.of(beanClass.getDeclaredConstructors()[0].getParameterTypes()));
+    }
+
+    private static final class StubDemoModeConfig implements DemoModeSettings {
+        private final boolean enabled;
+
+        private StubDemoModeConfig(boolean enabled) {
+            this.enabled = enabled;
+        }
+
+        @Override
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        @Override
+        public String getEmail() {
+            return enabled ? "dev@bookstore.local" : null;
+        }
+
+        @Override
+        public String getPassword() {
+            return enabled ? "dev123456" : null;
+        }
     }
 
     private static Customer customer() {

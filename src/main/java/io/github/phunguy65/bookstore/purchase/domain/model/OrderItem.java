@@ -26,6 +26,7 @@ public record OrderItem(
         Require.notNull(bookIsbnSnapshot, "bookIsbnSnapshot");
         Require.notNull(unitPriceSnapshot, "unitPriceSnapshot");
         Require.notNull(quantity, "quantity");
+        Require.positive(quantity.value(), "quantity");
         Require.notNull(lineTotal, "lineTotal");
         Require.notNull(createdAt, "createdAt");
     }

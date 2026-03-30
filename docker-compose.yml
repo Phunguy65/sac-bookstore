@@ -21,10 +21,13 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    env_file:
+      - docker/wildfly/demo-mode.env
     environment:
       DB_URL: jdbc:postgresql://postgres:5432/bookstore
       DB_USER: bookstore
       DB_PASSWORD: bookstore
+      BOOKSTORE_DEMO_MODE: "true"
     ports:
       - "8080:8080"
       - "9990:9990"

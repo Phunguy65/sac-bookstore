@@ -1,34 +1,34 @@
 package io.github.phunguy65.bookstore.purchase.interfaces.web;
 
-import io.github.phunguy65.bookstore.auth.interfaces.web.AuthSession;
 import io.github.phunguy65.bookstore.purchase.application.service.AccountCatalogApplicationService;
 import io.github.phunguy65.bookstore.purchase.application.service.CartActionResult;
 import io.github.phunguy65.bookstore.shared.domain.validation.FieldValidationException;
-import jakarta.enterprise.context.Dependent;
+import io.github.phunguy65.bookstore.shared.domain.valueobject.CustomerId;
+import jakarta.ejb.Stateless;
 import jakarta.inject.Inject;
-import jakarta.inject.Named;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 
-@Named
-@Dependent
-public class AccountHomePageBean {
-    private final AccountCatalogApplicationService accountCatalogApplicationService;
+@Stateless
+public class AccountHomePageBean implements AccountHomePage {
+    private AccountCatalogApplicationService accountCatalogApplicationService;
+
+    public AccountHomePageBean() {
+    }
 
     @Inject
     public AccountHomePageBean(AccountCatalogApplicationService accountCatalogApplicationService) {
         this.accountCatalogApplicationService = accountCatalogApplicationService;
     }
 
-    public AccountHomePageModel handle(HttpServletRequest request, HttpServletResponse response) {
+    @Override
+    public AccountHomePageResult handle(AccountHomePageRequest request) {
         String errorMessage = null;
         String infoMessage = null;
         Long lineErrorBookId = null;
         String lineQuantityError = null;
-        Long submittedBookId = tryParseLong(trimToEmpty(request.getParameter("bookId")));
-        String submittedQuantity = trimToEmpty(request.getParameter("quantity"));
+        Long submittedBookId = tryParseLong(trimToEmpty(request.bookId()));
+        String submittedQuantity = trimToEmpty(request.quantity());
 
-        if ("POST".equalsIgnoreCase(request.getMethod())) {
+        if ("POST".equalsIgnoreCase(request.method())) {
             CartActionResult result;
             try {
                 result = handleAddToCart(request);
@@ -50,7 +50,7 @@ public class AccountHomePageBean {
             }
         }
 
-        return new AccountHomePageModel(
+        AccountHomePageModel model = new AccountHomePageModel(
                 accountCatalogApplicationService.getActiveBooks(),
                 errorMessage,
                 infoMessage,
@@ -59,12 +59,13 @@ public class AccountHomePageBean {
                 submittedBookId,
                 submittedQuantity
         );
+        return new AccountHomePageResult(PageAction.RENDER, model);
     }
 
-    private CartActionResult handleAddToCart(HttpServletRequest request) {
-        long bookId = parseLong(request.getParameter("bookId"));
-        int quantity = parseInt(request.getParameter("quantity"));
-        return accountCatalogApplicationService.addBook(AuthSession.getCustomerId(request), bookId, quantity);
+    private CartActionResult handleAddToCart(AccountHomePageRequest request) {
+        long bookId = parseLong(request.bookId());
+        int quantity = parseInt(request.quantity());
+        return accountCatalogApplicationService.addBook(CustomerId.DEFAULT_CUSTOMER, bookId, quantity);
     }
 
     private CartActionResult requestFailure(IllegalArgumentException ex) {

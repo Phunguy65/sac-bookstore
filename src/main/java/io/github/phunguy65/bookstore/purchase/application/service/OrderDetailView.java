@@ -1,5 +1,7 @@
 package io.github.phunguy65.bookstore.purchase.application.service;
 
+import java.io.Serializable;
+
 import io.github.phunguy65.bookstore.purchase.domain.valueobject.OrderStatus;
 
 import java.math.BigDecimal;
@@ -11,7 +13,7 @@ public record OrderDetailView(
         BigDecimal totalAmount,
         OrderAddressView shippingAddress,
         List<OrderItemDetailView> items
-) {
+) implements Serializable {
     public OrderDetailView {
         items = List.copyOf(items);
     }

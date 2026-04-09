@@ -1,5 +1,7 @@
 package io.github.phunguy65.bookstore.purchase.application.service;
 
+import java.io.Serializable;
+
 public record OrderAddressView(
         String recipientName,
         String phoneNumber,
@@ -10,5 +12,5 @@ public record OrderAddressView(
         String city,
         String province,
         String postalCode
-) {
+) implements Serializable {
 }

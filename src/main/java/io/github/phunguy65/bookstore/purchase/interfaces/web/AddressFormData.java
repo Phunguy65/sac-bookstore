@@ -1,9 +1,11 @@
 package io.github.phunguy65.bookstore.purchase.interfaces.web;
 
+import java.io.Serializable;
+
 import io.github.phunguy65.bookstore.purchase.application.service.CheckoutAddressInput;
 import io.github.phunguy65.bookstore.shared.domain.valueobject.AddressDetails;
 
-public class AddressFormData {
+public class AddressFormData implements Serializable {
     private final String recipientName;
     private final String phoneNumber;
     private final String line1;

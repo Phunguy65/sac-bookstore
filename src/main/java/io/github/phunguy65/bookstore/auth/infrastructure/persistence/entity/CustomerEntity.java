@@ -1,12 +1,9 @@
 package io.github.phunguy65.bookstore.auth.infrastructure.persistence.entity;
 
-import io.github.phunguy65.bookstore.auth.domain.valueobject.CustomerStatus;
 import io.github.phunguy65.bookstore.shared.infrastructure.persistence.entity.AuditableEntity;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -36,9 +33,8 @@ public class CustomerEntity extends AuditableEntity {
     @Column(name = "phone", nullable = false, length = 20)
     private String phone;
 
-    @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
-    private CustomerStatus status;
+    private String status;
 
     @OneToMany(mappedBy = "customer", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
     private List<AddressEntity> addresses = new ArrayList<>();
@@ -83,11 +79,11 @@ public class CustomerEntity extends AuditableEntity {
         this.phone = phone;
     }
 
-    public CustomerStatus getStatus() {
+    public String getStatus() {
         return status;
     }
 
-    public void setStatus(CustomerStatus status) {
+    public void setStatus(String status) {
         this.status = status;
     }
 

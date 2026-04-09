@@ -1,8 +1,0 @@
-<%@ page import="io.github.phunguy65.bookstore.auth.interfaces.web.AuthGuardBean" %>
-<%@ page import="jakarta.enterprise.inject.spi.CDI" %>
-<%
-    CDI.current().select(AuthGuardBean.class).get().requireAuthenticated(request, response);
-    if (response.isCommitted()) {
-        return;
-    }
-%>

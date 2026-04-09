@@ -1,12 +1,35 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
-<%@ page import="io.github.phunguy65.bookstore.auth.interfaces.web.HtmlEscaper" %>
+<%@ page import="io.github.phunguy65.bookstore.shared.interfaces.web.HtmlEscaper" %>
 <%@ page import="io.github.phunguy65.bookstore.purchase.application.service.OrderSummaryView" %>
-<%@ page import="io.github.phunguy65.bookstore.purchase.interfaces.web.OrderHistoryPageBean" %>
+<%@ page import="io.github.phunguy65.bookstore.purchase.interfaces.web.OrderHistoryPage" %>
+<%@ page import="io.github.phunguy65.bookstore.purchase.interfaces.web.OrderHistoryPageRequest" %>
+<%@ page import="io.github.phunguy65.bookstore.purchase.interfaces.web.OrderHistoryPageResult" %>
 <%@ page import="io.github.phunguy65.bookstore.purchase.interfaces.web.OrderHistoryPageModel" %>
-<%@ page import="jakarta.enterprise.inject.spi.CDI" %>
-<%@ include file="/WEB-INF/jspf/auth/require-auth.jspf" %>
+<%@ page import="io.github.phunguy65.bookstore.purchase.interfaces.web.PageAction" %>
+<%@ page import="javax.naming.InitialContext" %>
+<%!
+    private OrderHistoryPage orderHistoryPage = null;
+
+    public void jspInit() {
+        try {
+            InitialContext ic = new InitialContext();
+            orderHistoryPage = (OrderHistoryPage) ic.lookup("java:module/OrderHistoryPageBean!io.github.phunguy65.bookstore.purchase.interfaces.web.OrderHistoryPage");
+        } catch (Exception ex) {
+            System.out.println("Could not create OrderHistoryPage bean. " + ex.getMessage());
+        }
+    }
+
+    public void jspDestroy() {
+        orderHistoryPage = null;
+    }
+%>
 <%
-    OrderHistoryPageModel form = CDI.current().select(OrderHistoryPageBean.class).get().handle(request, response);
+    OrderHistoryPageRequest pageRequest = new OrderHistoryPageRequest(
+        request.getParameter("page"),
+        request.getParameter("error")
+    );
+    OrderHistoryPageResult result = orderHistoryPage.handle(pageRequest);
+    OrderHistoryPageModel form = result.model();
 %>
 <!DOCTYPE html>
 <html lang="vi">

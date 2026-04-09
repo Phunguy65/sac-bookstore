@@ -1,49 +1,49 @@
 package io.github.phunguy65.bookstore.purchase.interfaces.web;
 
-import io.github.phunguy65.bookstore.auth.interfaces.web.AuthSession;
 import io.github.phunguy65.bookstore.purchase.application.service.CheckoutApplicationService;
 import io.github.phunguy65.bookstore.purchase.application.service.CheckoutResult;
 import io.github.phunguy65.bookstore.purchase.application.service.CheckoutView;
-import jakarta.enterprise.context.Dependent;
+import io.github.phunguy65.bookstore.shared.domain.valueobject.CustomerId;
+import jakarta.ejb.Stateless;
 import jakarta.inject.Inject;
-import jakarta.inject.Named;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 
-import java.io.IOException;
+@Stateless
+public class CheckoutPageBean implements CheckoutPage {
+    private CheckoutApplicationService checkoutApplicationService;
 
-@Named
-@Dependent
-public class CheckoutPageBean {
-    private final CheckoutApplicationService checkoutApplicationService;
+    public CheckoutPageBean() {
+    }
 
     @Inject
     public CheckoutPageBean(CheckoutApplicationService checkoutApplicationService) {
         this.checkoutApplicationService = checkoutApplicationService;
     }
 
-    public CheckoutPageModel handle(HttpServletRequest request, HttpServletResponse response) throws IOException {
-        var customerId = AuthSession.getCustomerId(request);
+    @Override
+    public CheckoutPageResult handle(CheckoutPageRequest request) {
+        var customerId = CustomerId.DEFAULT_CUSTOMER;
         CheckoutView checkout = checkoutApplicationService.getCheckout(customerId);
         if (checkout.cart().isEmpty()) {
-            response.sendRedirect(request.getContextPath() + PurchasePaths.CART + "?info=emptyCheckout");
-            return new CheckoutPageModel(checkout.cart(), AddressFormData.empty(), true, null, java.util.Map.of());
+            CheckoutPageModel model = new CheckoutPageModel(checkout.cart(), AddressFormData.empty(), true, null, java.util.Map.of());
+            return new CheckoutPageResult(PageAction.REDIRECT, PurchasePaths.CART + "?info=emptyCheckout", model);
         }
 
-        if (!"POST".equalsIgnoreCase(request.getMethod())) {
+        if (!"POST".equalsIgnoreCase(request.method())) {
             AddressFormData form = checkout.shippingAddress() == null ? AddressFormData.empty() : AddressFormData.from(checkout.shippingAddress());
-            return new CheckoutPageModel(checkout.cart(), form, checkout.requiresShippingAddressInput(), null, java.util.Map.of());
+            CheckoutPageModel model = new CheckoutPageModel(checkout.cart(), form, checkout.requiresShippingAddressInput(), null, java.util.Map.of());
+            return new CheckoutPageResult(PageAction.RENDER, null, model);
         }
 
         AddressFormData form = readAddressForm(request);
         CheckoutResult result = checkoutApplicationService.placeOrder(customerId, form.toInput());
         if (result.isSuccess()) {
-            response.sendRedirect(request.getContextPath() + PurchasePaths.ORDER_DETAIL + "?orderId=" + result.getOrderId().value());
-            return new CheckoutPageModel(checkout.cart(), form, checkout.requiresShippingAddressInput(), null, java.util.Map.of());
+            CheckoutPageModel model = new CheckoutPageModel(checkout.cart(), form, checkout.requiresShippingAddressInput(), null, java.util.Map.of());
+            return new CheckoutPageResult(PageAction.REDIRECT, PurchasePaths.ORDER_DETAIL + "?orderId=" + result.getOrderId().value(), model);
         }
         java.util.Map<String, String> fieldErrors = mapFieldErrors(result);
         String errorMessage = fieldErrors.isEmpty() ? result.getErrorMessage() : null;
-        return new CheckoutPageModel(checkout.cart(), form, checkout.requiresShippingAddressInput(), errorMessage, fieldErrors);
+        CheckoutPageModel model = new CheckoutPageModel(checkout.cart(), form, checkout.requiresShippingAddressInput(), errorMessage, fieldErrors);
+        return new CheckoutPageResult(PageAction.RENDER, null, model);
     }
 
     private java.util.Map<String, String> mapFieldErrors(CheckoutResult result) {
@@ -57,17 +57,17 @@ public class CheckoutPageBean {
         return fieldErrors;
     }
 
-    private AddressFormData readAddressForm(HttpServletRequest request) {
+    private AddressFormData readAddressForm(CheckoutPageRequest request) {
         return new AddressFormData(
-                trimToEmpty(request.getParameter("recipientName")),
-                trimToEmpty(request.getParameter("phoneNumber")),
-                trimToEmpty(request.getParameter("line1")),
-                trimToEmpty(request.getParameter("line2")),
-                trimToEmpty(request.getParameter("ward")),
-                trimToEmpty(request.getParameter("district")),
-                trimToEmpty(request.getParameter("city")),
-                trimToEmpty(request.getParameter("province")),
-                trimToEmpty(request.getParameter("postalCode"))
+                trimToEmpty(request.recipientName()),
+                trimToEmpty(request.phoneNumber()),
+                trimToEmpty(request.line1()),
+                trimToEmpty(request.line2()),
+                trimToEmpty(request.ward()),
+                trimToEmpty(request.district()),
+                trimToEmpty(request.city()),
+                trimToEmpty(request.province()),
+                trimToEmpty(request.postalCode())
         );
     }
 

@@ -1,13 +1,47 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
-<%@ page import="io.github.phunguy65.bookstore.auth.interfaces.web.HtmlEscaper" %>
+<%@ page import="io.github.phunguy65.bookstore.shared.interfaces.web.HtmlEscaper" %>
 <%@ page import="io.github.phunguy65.bookstore.purchase.application.service.CartLineView" %>
-<%@ page import="io.github.phunguy65.bookstore.purchase.interfaces.web.CheckoutPageBean" %>
+<%@ page import="io.github.phunguy65.bookstore.purchase.interfaces.web.CheckoutPage" %>
+<%@ page import="io.github.phunguy65.bookstore.purchase.interfaces.web.CheckoutPageRequest" %>
+<%@ page import="io.github.phunguy65.bookstore.purchase.interfaces.web.CheckoutPageResult" %>
 <%@ page import="io.github.phunguy65.bookstore.purchase.interfaces.web.CheckoutPageModel" %>
-<%@ page import="jakarta.enterprise.inject.spi.CDI" %>
-<%@ include file="/WEB-INF/jspf/auth/require-auth.jspf" %>
+<%@ page import="io.github.phunguy65.bookstore.purchase.interfaces.web.PageAction" %>
+<%@ page import="javax.naming.InitialContext" %>
+<%!
+    private CheckoutPage checkoutPage = null;
+
+    public void jspInit() {
+        try {
+            InitialContext ic = new InitialContext();
+            checkoutPage = (CheckoutPage) ic.lookup("java:module/CheckoutPageBean!io.github.phunguy65.bookstore.purchase.interfaces.web.CheckoutPage");
+        } catch (Exception ex) {
+            System.out.println("Could not create CheckoutPage bean. " + ex.getMessage());
+        }
+    }
+
+    public void jspDestroy() {
+        checkoutPage = null;
+    }
+%>
 <%
-    CheckoutPageModel form = CDI.current().select(CheckoutPageBean.class).get().handle(request, response);
-    if (response.isCommitted()) { return; }
+    CheckoutPageRequest pageRequest = new CheckoutPageRequest(
+        request.getMethod(),
+        request.getParameter("recipientName"),
+        request.getParameter("phoneNumber"),
+        request.getParameter("line1"),
+        request.getParameter("line2"),
+        request.getParameter("ward"),
+        request.getParameter("district"),
+        request.getParameter("city"),
+        request.getParameter("province"),
+        request.getParameter("postalCode")
+    );
+    CheckoutPageResult result = checkoutPage.handle(pageRequest);
+    if (result.action() == PageAction.REDIRECT) {
+        response.sendRedirect(request.getContextPath() + result.redirectUrl());
+        return;
+    }
+    CheckoutPageModel form = result.model();
 %>
 <!DOCTYPE html>
 <html lang="vi">

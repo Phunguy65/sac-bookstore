@@ -1,13 +1,38 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
-<%@ page import="io.github.phunguy65.bookstore.auth.interfaces.web.HtmlEscaper" %>
+<%@ page import="io.github.phunguy65.bookstore.shared.interfaces.web.HtmlEscaper" %>
 <%@ page import="io.github.phunguy65.bookstore.purchase.application.service.OrderItemDetailView" %>
-<%@ page import="io.github.phunguy65.bookstore.purchase.interfaces.web.OrderDetailPageBean" %>
+<%@ page import="io.github.phunguy65.bookstore.purchase.interfaces.web.OrderDetailPage" %>
+<%@ page import="io.github.phunguy65.bookstore.purchase.interfaces.web.OrderDetailPageRequest" %>
+<%@ page import="io.github.phunguy65.bookstore.purchase.interfaces.web.OrderDetailPageResult" %>
 <%@ page import="io.github.phunguy65.bookstore.purchase.interfaces.web.OrderDetailPageModel" %>
-<%@ page import="jakarta.enterprise.inject.spi.CDI" %>
-<%@ include file="/WEB-INF/jspf/auth/require-auth.jspf" %>
+<%@ page import="io.github.phunguy65.bookstore.purchase.interfaces.web.PageAction" %>
+<%@ page import="javax.naming.InitialContext" %>
+<%!
+    private OrderDetailPage orderDetailPage = null;
+
+    public void jspInit() {
+        try {
+            InitialContext ic = new InitialContext();
+            orderDetailPage = (OrderDetailPage) ic.lookup("java:module/OrderDetailPageBean!io.github.phunguy65.bookstore.purchase.interfaces.web.OrderDetailPage");
+        } catch (Exception ex) {
+            System.out.println("Could not create OrderDetailPage bean. " + ex.getMessage());
+        }
+    }
+
+    public void jspDestroy() {
+        orderDetailPage = null;
+    }
+%>
 <%
-    OrderDetailPageModel form = CDI.current().select(OrderDetailPageBean.class).get().handle(request, response);
-    if (response.isCommitted()) { return; }
+    OrderDetailPageRequest pageRequest = new OrderDetailPageRequest(
+        request.getParameter("orderId")
+    );
+    OrderDetailPageResult result = orderDetailPage.handle(pageRequest);
+    if (result.action() == PageAction.REDIRECT) {
+        response.sendRedirect(request.getContextPath() + result.redirectUrl());
+        return;
+    }
+    OrderDetailPageModel form = result.model();
 %>
 <!DOCTYPE html>
 <html lang="vi">

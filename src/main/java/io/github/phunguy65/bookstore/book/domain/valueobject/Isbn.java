@@ -1,10 +1,12 @@
 package io.github.phunguy65.bookstore.book.domain.valueobject;
 
+import java.io.Serializable;
+
 import io.github.phunguy65.bookstore.shared.domain.validation.Require;
 
 import java.util.regex.Pattern;
 
-public record Isbn(String value) {
+public record Isbn(String value) implements Serializable {
     private static final Pattern PATTERN = Pattern.compile("^(97(8|9))?\\d{9}(\\d|X)$");
 
     public Isbn {

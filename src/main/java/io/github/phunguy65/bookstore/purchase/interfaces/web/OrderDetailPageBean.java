@@ -1,39 +1,35 @@
 package io.github.phunguy65.bookstore.purchase.interfaces.web;
 
-import io.github.phunguy65.bookstore.auth.interfaces.web.AuthSession;
 import io.github.phunguy65.bookstore.purchase.application.service.OrderLookupResult;
 import io.github.phunguy65.bookstore.purchase.application.service.OrderQueryApplicationService;
-import jakarta.enterprise.context.Dependent;
+import io.github.phunguy65.bookstore.shared.domain.valueobject.CustomerId;
+import jakarta.ejb.Stateless;
 import jakarta.inject.Inject;
-import jakarta.inject.Named;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 
-import java.io.IOException;
+@Stateless
+public class OrderDetailPageBean implements OrderDetailPage {
+    private OrderQueryApplicationService orderQueryApplicationService;
 
-@Named
-@Dependent
-public class OrderDetailPageBean {
-    private final OrderQueryApplicationService orderQueryApplicationService;
+    public OrderDetailPageBean() {
+    }
 
     @Inject
     public OrderDetailPageBean(OrderQueryApplicationService orderQueryApplicationService) {
         this.orderQueryApplicationService = orderQueryApplicationService;
     }
 
-    public OrderDetailPageModel handle(HttpServletRequest request, HttpServletResponse response) throws IOException {
-        long orderId = parseOrderId(request.getParameter("orderId"));
+    @Override
+    public OrderDetailPageResult handle(OrderDetailPageRequest request) {
+        long orderId = parseOrderId(request.orderIdParam());
         if (orderId <= 0L) {
-            response.sendRedirect(request.getContextPath() + PurchasePaths.ORDERS + "?error=missing");
-            return null;
+            return new OrderDetailPageResult(PageAction.REDIRECT, PurchasePaths.ORDERS + "?error=missing", null);
         }
 
-        OrderLookupResult result = orderQueryApplicationService.getOwnedOrder(AuthSession.getCustomerId(request), orderId);
+        OrderLookupResult result = orderQueryApplicationService.getOwnedOrder(CustomerId.DEFAULT_CUSTOMER, orderId);
         if (!result.isFound()) {
-            response.sendRedirect(request.getContextPath() + PurchasePaths.ORDERS + "?error=missing");
-            return null;
+            return new OrderDetailPageResult(PageAction.REDIRECT, PurchasePaths.ORDERS + "?error=missing", null);
         }
-        return new OrderDetailPageModel(result.getOrder());
+        return new OrderDetailPageResult(PageAction.RENDER, null, new OrderDetailPageModel(result.getOrder()));
     }
 
     private long parseOrderId(String value) {

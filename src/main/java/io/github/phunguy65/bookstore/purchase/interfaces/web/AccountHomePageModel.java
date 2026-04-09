@@ -1,10 +1,12 @@
 package io.github.phunguy65.bookstore.purchase.interfaces.web;
 
+import java.io.Serializable;
+
 import io.github.phunguy65.bookstore.purchase.application.service.CatalogBookView;
 
 import java.util.List;
 
-public class AccountHomePageModel {
+public class AccountHomePageModel implements Serializable {
     private final List<CatalogBookView> books;
     private final String errorMessage;
     private final String infoMessage;

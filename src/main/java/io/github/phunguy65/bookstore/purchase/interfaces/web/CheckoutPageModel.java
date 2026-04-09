@@ -1,8 +1,10 @@
 package io.github.phunguy65.bookstore.purchase.interfaces.web;
 
+import java.io.Serializable;
+
 import io.github.phunguy65.bookstore.purchase.application.service.CartView;
 
-public class CheckoutPageModel {
+public class CheckoutPageModel implements Serializable {
     private final CartView cart;
     private final AddressFormData addressForm;
     private final boolean requiresShippingAddressInput;

@@ -1,8 +1,6 @@
 package io.github.phunguy65.bookstore.shared.domain.model;
 
 import io.github.phunguy65.bookstore.auth.domain.model.Address;
-import io.github.phunguy65.bookstore.auth.domain.model.Customer;
-import io.github.phunguy65.bookstore.auth.domain.valueobject.CustomerStatus;
 import io.github.phunguy65.bookstore.book.domain.model.Book;
 import io.github.phunguy65.bookstore.book.domain.valueobject.AuthorName;
 import io.github.phunguy65.bookstore.book.domain.valueobject.BookTitle;
@@ -42,21 +40,6 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class DomainModelsValidationTest {
-    @Test
-    void customerRejectsNullEmail() {
-        assertThrows(IllegalArgumentException.class, () -> new Customer(
-                new CustomerId(1L),
-                null,
-                new PasswordHash("hashed-password"),
-                new FullName("Customer Name"),
-                new PhoneNumber("0901234567"),
-                CustomerStatus.ACTIVE,
-                0L,
-                Instant.now(),
-                Instant.now()
-        ));
-    }
-
     @Test
     void addressRejectsNullDetails() {
         assertThrows(IllegalArgumentException.class, () -> new Address(

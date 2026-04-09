@@ -1,10 +1,12 @@
 package io.github.phunguy65.bookstore.purchase.interfaces.web;
 
+import java.io.Serializable;
+
 import io.github.phunguy65.bookstore.purchase.application.service.OrderSummaryView;
 
 import java.util.List;
 
-public class OrderHistoryPageModel {
+public class OrderHistoryPageModel implements Serializable {
     private final List<OrderSummaryView> orders;
     private final String errorMessage;
     private final int currentPage;

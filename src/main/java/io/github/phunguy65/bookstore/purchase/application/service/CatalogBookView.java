@@ -1,5 +1,7 @@
 package io.github.phunguy65.bookstore.purchase.application.service;
 
+import java.io.Serializable;
+
 import io.github.phunguy65.bookstore.book.domain.valueobject.AuthorName;
 import io.github.phunguy65.bookstore.book.domain.valueobject.BookDescription;
 import io.github.phunguy65.bookstore.book.domain.valueobject.BookTitle;
@@ -16,5 +18,5 @@ public record CatalogBookView(
         BookDescription description,
         Money price,
         Quantity availableStock
-) {
+) implements Serializable {
 }

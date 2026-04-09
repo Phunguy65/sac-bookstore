@@ -2,7 +2,6 @@ package io.github.phunguy65.bookstore.shared.domain.valueobject;
 
 import org.junit.jupiter.api.Test;
 
-import io.github.phunguy65.bookstore.auth.domain.valueobject.CustomerStatus;
 import io.github.phunguy65.bookstore.purchase.domain.valueobject.OrderStatus;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -60,8 +59,6 @@ class PersonAndAddressValueObjectsTest {
 
     @Test
     void enumValueObjectsExposeExpectedConstants() {
-        assertEquals(CustomerStatus.ACTIVE, CustomerStatus.valueOf("ACTIVE"));
-        assertEquals(CustomerStatus.INACTIVE, CustomerStatus.valueOf("INACTIVE"));
         assertEquals(OrderStatus.PLACED, OrderStatus.valueOf("PLACED"));
         assertEquals(OrderStatus.CANCELLED, OrderStatus.valueOf("CANCELLED"));
     }

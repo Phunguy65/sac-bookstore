@@ -1,5 +1,7 @@
 package io.github.phunguy65.bookstore.purchase.application.service;
 
+import java.io.Serializable;
+
 import java.math.BigDecimal;
 
 public record OrderItemDetailView(
@@ -8,5 +10,5 @@ public record OrderItemDetailView(
         String bookIsbn,
         int quantity,
         BigDecimal lineTotal
-) {
+) implements Serializable {
 }

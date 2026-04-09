@@ -1,5 +1,7 @@
 package io.github.phunguy65.bookstore.purchase.application.service;
 
+import java.io.Serializable;
+
 import io.github.phunguy65.bookstore.purchase.domain.valueobject.OrderStatus;
 import io.github.phunguy65.bookstore.shared.domain.valueobject.Money;
 import io.github.phunguy65.bookstore.shared.domain.valueobject.OrderId;
@@ -12,5 +14,5 @@ public record OrderSummaryView(
         Money totalAmount,
         int itemCount,
         Instant placedAt
-) {
+) implements Serializable {
 }

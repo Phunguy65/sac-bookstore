@@ -1,13 +1,36 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
-<%@ page import="io.github.phunguy65.bookstore.auth.interfaces.web.AuthSession" %>
-<%@ page import="io.github.phunguy65.bookstore.auth.interfaces.web.HtmlEscaper" %>
+<%@ page import="io.github.phunguy65.bookstore.shared.interfaces.web.HtmlEscaper" %>
 <%@ page import="io.github.phunguy65.bookstore.purchase.application.service.CatalogBookView" %>
-<%@ page import="io.github.phunguy65.bookstore.purchase.interfaces.web.AccountHomePageBean" %>
+<%@ page import="io.github.phunguy65.bookstore.purchase.interfaces.web.AccountHomePage" %>
+<%@ page import="io.github.phunguy65.bookstore.purchase.interfaces.web.AccountHomePageRequest" %>
+<%@ page import="io.github.phunguy65.bookstore.purchase.interfaces.web.AccountHomePageResult" %>
 <%@ page import="io.github.phunguy65.bookstore.purchase.interfaces.web.AccountHomePageModel" %>
-<%@ page import="jakarta.enterprise.inject.spi.CDI" %>
-<%@ include file="/WEB-INF/jspf/auth/require-auth.jspf" %>
+<%@ page import="io.github.phunguy65.bookstore.purchase.interfaces.web.PageAction" %>
+<%@ page import="javax.naming.InitialContext" %>
+<%!
+    private AccountHomePage accountHomePage = null;
+
+    public void jspInit() {
+        try {
+            InitialContext ic = new InitialContext();
+            accountHomePage = (AccountHomePage) ic.lookup("java:module/AccountHomePageBean!io.github.phunguy65.bookstore.purchase.interfaces.web.AccountHomePage");
+        } catch (Exception ex) {
+            System.out.println("Could not create AccountHomePage bean. " + ex.getMessage());
+        }
+    }
+
+    public void jspDestroy() {
+        accountHomePage = null;
+    }
+%>
 <%
-    AccountHomePageModel form = CDI.current().select(AccountHomePageBean.class).get().handle(request, response);
+    AccountHomePageRequest pageRequest = new AccountHomePageRequest(
+        request.getMethod(),
+        request.getParameter("bookId"),
+        request.getParameter("quantity")
+    );
+    AccountHomePageResult result = accountHomePage.handle(pageRequest);
+    AccountHomePageModel form = result.model();
 %>
 <!DOCTYPE html>
 <html lang="vi">
@@ -39,13 +62,8 @@
             <p class="muted">Chon sach tu danh muc ben duoi, them vao gio hang va tiep tuc dat don COD.</p>
         </div>
         <div class="actions">
-            <a class="link" href="<%= request.getContextPath() %>/index.jsp">Ve trang chu</a>
             <a class="link" href="<%= request.getContextPath() %>/account/cart.jsp">Mo gio hang</a>
             <a class="link" href="<%= request.getContextPath() %>/account/orders.jsp">Xem don hang</a>
-            <form method="post" action="<%= request.getContextPath() %>/auth/logout.jsp" onsubmit="const btn=this.querySelector('button[type=submit]'); const status=document.getElementById('account-logout-status'); if (btn) { btn.disabled=true; btn.innerText='Dang xu ly...'; } if (status) { status.innerText='Dang xu ly...'; }">
-                <button class="primary" type="submit">Dang xuat</button>
-            </form>
-            <span id="account-logout-status" class="sr-only" aria-live="polite"></span>
         </div>
     </div>
 

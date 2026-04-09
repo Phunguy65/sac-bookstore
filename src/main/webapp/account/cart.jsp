@@ -1,12 +1,38 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
-<%@ page import="io.github.phunguy65.bookstore.auth.interfaces.web.HtmlEscaper" %>
+<%@ page import="io.github.phunguy65.bookstore.shared.interfaces.web.HtmlEscaper" %>
 <%@ page import="io.github.phunguy65.bookstore.purchase.application.service.CartLineView" %>
-<%@ page import="io.github.phunguy65.bookstore.purchase.interfaces.web.CartPageBean" %>
+<%@ page import="io.github.phunguy65.bookstore.purchase.interfaces.web.CartPage" %>
+<%@ page import="io.github.phunguy65.bookstore.purchase.interfaces.web.CartPageRequest" %>
+<%@ page import="io.github.phunguy65.bookstore.purchase.interfaces.web.CartPageResult" %>
 <%@ page import="io.github.phunguy65.bookstore.purchase.interfaces.web.CartPageModel" %>
-<%@ page import="jakarta.enterprise.inject.spi.CDI" %>
-<%@ include file="/WEB-INF/jspf/auth/require-auth.jspf" %>
+<%@ page import="io.github.phunguy65.bookstore.purchase.interfaces.web.PageAction" %>
+<%@ page import="javax.naming.InitialContext" %>
+<%!
+    private CartPage cartPage = null;
+
+    public void jspInit() {
+        try {
+            InitialContext ic = new InitialContext();
+            cartPage = (CartPage) ic.lookup("java:module/CartPageBean!io.github.phunguy65.bookstore.purchase.interfaces.web.CartPage");
+        } catch (Exception ex) {
+            System.out.println("Could not create CartPage bean. " + ex.getMessage());
+        }
+    }
+
+    public void jspDestroy() {
+        cartPage = null;
+    }
+%>
 <%
-    CartPageModel form = CDI.current().select(CartPageBean.class).get().handle(request, response);
+    CartPageRequest pageRequest = new CartPageRequest(
+        request.getMethod(),
+        request.getParameter("action"),
+        request.getParameter("bookId"),
+        request.getParameter("quantity"),
+        request.getParameter("info")
+    );
+    CartPageResult result = cartPage.handle(pageRequest);
+    CartPageModel form = result.model();
 %>
 <!DOCTYPE html>
 <html lang="vi">

@@ -1,5 +1,7 @@
 package io.github.phunguy65.bookstore.shared.domain.valueobject;
 
+import java.io.Serializable;
+
 import io.github.phunguy65.bookstore.shared.domain.validation.Require;
 
 public record AddressDetails(
@@ -12,7 +14,7 @@ public record AddressDetails(
         City city,
         Province province,
         PostalCode postalCode
-) {
+) implements Serializable {
     public AddressDetails {
         Require.notNull(recipientName, "recipientName");
         Require.notNull(phoneNumber, "phoneNumber");

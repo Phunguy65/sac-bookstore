@@ -1,35 +1,36 @@
 package io.github.phunguy65.bookstore.purchase.interfaces.web;
 
-import io.github.phunguy65.bookstore.auth.interfaces.web.AuthSession;
 import io.github.phunguy65.bookstore.purchase.application.service.OrderQueryApplicationService;
-import jakarta.enterprise.context.Dependent;
+import io.github.phunguy65.bookstore.shared.domain.valueobject.CustomerId;
+import jakarta.ejb.Stateless;
 import jakarta.inject.Inject;
-import jakarta.inject.Named;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 
-@Named
-@Dependent
-public class OrderHistoryPageBean {
+@Stateless
+public class OrderHistoryPageBean implements OrderHistoryPage {
     private static final int PAGE_SIZE = 10;
-    private final OrderQueryApplicationService orderQueryApplicationService;
+    private OrderQueryApplicationService orderQueryApplicationService;
+
+    public OrderHistoryPageBean() {
+    }
 
     @Inject
     public OrderHistoryPageBean(OrderQueryApplicationService orderQueryApplicationService) {
         this.orderQueryApplicationService = orderQueryApplicationService;
     }
 
-    public OrderHistoryPageModel handle(HttpServletRequest request, HttpServletResponse response) {
+    @Override
+    public OrderHistoryPageResult handle(OrderHistoryPageRequest request) {
         String errorMessage = null;
-        if ("missing".equals(request.getParameter("error"))) {
+        if ("missing".equals(request.errorParam())) {
             errorMessage = "Khong tim thay don hang phu hop.";
         }
-        var orders = orderQueryApplicationService.getOrderHistory(AuthSession.getCustomerId(request));
+        var orders = orderQueryApplicationService.getOrderHistory(CustomerId.DEFAULT_CUSTOMER);
         int totalPages = Math.max(1, (int) Math.ceil((double) orders.size() / PAGE_SIZE));
-        int currentPage = parsePage(request.getParameter("page"), totalPages);
+        int currentPage = parsePage(request.pageParam(), totalPages);
         int fromIndex = Math.min((currentPage - 1) * PAGE_SIZE, orders.size());
         int toIndex = Math.min(fromIndex + PAGE_SIZE, orders.size());
-        return new OrderHistoryPageModel(orders.subList(fromIndex, toIndex), errorMessage, currentPage, totalPages);
+        OrderHistoryPageModel model = new OrderHistoryPageModel(orders.subList(fromIndex, toIndex), errorMessage, currentPage, totalPages);
+        return new OrderHistoryPageResult(PageAction.RENDER, model);
     }
 
     private int parsePage(String rawPage, int totalPages) {

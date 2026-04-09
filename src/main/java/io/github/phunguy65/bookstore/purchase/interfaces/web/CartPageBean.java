@@ -1,40 +1,40 @@
 package io.github.phunguy65.bookstore.purchase.interfaces.web;
 
-import io.github.phunguy65.bookstore.auth.interfaces.web.AuthSession;
 import io.github.phunguy65.bookstore.purchase.application.service.CartActionResult;
 import io.github.phunguy65.bookstore.purchase.application.service.CartApplicationService;
 import io.github.phunguy65.bookstore.purchase.application.service.CartView;
 import io.github.phunguy65.bookstore.shared.domain.validation.FieldValidationException;
-import jakarta.enterprise.context.Dependent;
+import io.github.phunguy65.bookstore.shared.domain.valueobject.CustomerId;
+import jakarta.ejb.Stateless;
 import jakarta.inject.Inject;
-import jakarta.inject.Named;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 
-@Named
-@Dependent
-public class CartPageBean {
-    private final CartApplicationService cartApplicationService;
+@Stateless
+public class CartPageBean implements CartPage {
+    private CartApplicationService cartApplicationService;
+
+    public CartPageBean() {
+    }
 
     @Inject
     public CartPageBean(CartApplicationService cartApplicationService) {
         this.cartApplicationService = cartApplicationService;
     }
 
-    public CartPageModel handle(HttpServletRequest request, HttpServletResponse response) {
-        var customerId = AuthSession.getCustomerId(request);
+    @Override
+    public CartPageResult handle(CartPageRequest request) {
+        var customerId = CustomerId.DEFAULT_CUSTOMER;
         String errorMessage = null;
-        String infoMessage = mapInfoMessage(request.getParameter("info"));
+        String infoMessage = mapInfoMessage(request.infoParam());
         Long lineErrorBookId = null;
         String lineQuantityError = null;
 
-        if ("POST".equalsIgnoreCase(request.getMethod())) {
-            String action = trimToEmpty(request.getParameter("action"));
+        if ("POST".equalsIgnoreCase(request.method())) {
+            String action = trimToEmpty(request.action());
             Long submittedBookId = null;
             CartActionResult result;
             try {
                 result = handleMutation(request);
-                String rawBookId = trimToEmpty(request.getParameter("bookId"));
+                String rawBookId = trimToEmpty(request.bookId());
                 if (!rawBookId.isEmpty()) {
                     submittedBookId = Long.parseLong(rawBookId);
                 }
@@ -56,7 +56,8 @@ public class CartPageBean {
         }
 
         CartView cart = cartApplicationService.getCart(customerId);
-        return new CartPageModel(cart, errorMessage, infoMessage, lineErrorBookId, lineQuantityError);
+        CartPageModel model = new CartPageModel(cart, errorMessage, infoMessage, lineErrorBookId, lineQuantityError);
+        return new CartPageResult(PageAction.RENDER, model);
     }
 
     private String mapInfoMessage(String value) {
@@ -78,11 +79,11 @@ public class CartPageBean {
         return CartActionResult.failure(message, fieldErrors);
     }
 
-    private CartActionResult handleMutation(HttpServletRequest request) {
-        String action = trimToEmpty(request.getParameter("action"));
+    private CartActionResult handleMutation(CartPageRequest request) {
+        String action = trimToEmpty(request.action());
         return switch (action) {
-            case "update" -> cartApplicationService.updateQuantity(AuthSession.getCustomerId(request), parseLong(request.getParameter("bookId")), parseInt(request.getParameter("quantity")));
-            case "remove" -> cartApplicationService.removeBook(AuthSession.getCustomerId(request), parseLong(request.getParameter("bookId")));
+            case "update" -> cartApplicationService.updateQuantity(CustomerId.DEFAULT_CUSTOMER, parseLong(request.bookId()), parseInt(request.quantity()));
+            case "remove" -> cartApplicationService.removeBook(CustomerId.DEFAULT_CUSTOMER, parseLong(request.bookId()));
             default -> CartActionResult.failure("Hanh dong gio hang khong hop le.");
         };
     }

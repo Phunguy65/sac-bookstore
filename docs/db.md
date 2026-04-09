@@ -1,674 +1,532 @@
-# Database Documentation / Tài liệu Cơ sở Dữ liệu
+# Lược đồ cơ sở dữ liệu — Hệ thống nhà sách trực tuyến
 
-> **Bilingual**: English (primary) / Tiếng Việt (phụ)
->
-> This document describes the physical database schema of the Bookstore application.
-> Hồ sơ này mô tả lược đồ vật lý của ứng dụng Bookstore.
+## 1. Tổng quan
+
+Hệ thống nhà sách trực tuyến sử dụng **PostgreSQL** làm cơ sở dữ liệu quan hệ.
+Schema được quản lý bằng **Flyway** migration
+(`src/main/resources/db/migration`).
 
 ---
 
-## 1. Entity Class Diagram (PlantUML)
+## 2. ERD / Lược đồ thực thể
 
-> Shows JPA entity classes with their fields, types, and relationships.
+### 2.1 Sơ đồ thực thể — Class Entity Diagram
 
 ```plantuml
-@startuml Bookstore_Class_Diagram
-!theme plain
+@startuml
+title Hệ thống nhà sách trực tuyến — Sơ đồ thực thể
+left to right direction
+skinparam linetype ortho
+skinparam entity {
+    BackgroundColor #FEFEFE
+    BorderColor #333333
+}
 
-' ─── PACKAGES ───────────────────────────────────────────────────
-package "auth" {
-    class CustomerEntity <<Entity>> {
-        .. Fields ..
-        - id: Long
-        - email: String
-        - passwordHash: String
-        - fullName: String
-        - phone: String
-        - status: CustomerStatus
-        .. Relationships ..
-        + addresses: List<AddressEntity>
-        + cart: CartEntity
-        + orders: List<OrderEntity>
+package "Phân hệ xác thực" {
+    entity "customers" as customers {
+        * id : BIGINT <<PK, IDENTITY>>
+        --
+        * email : VARCHAR(255) <<UK>>
+        * password_hash : VARCHAR(255)
+        * full_name : VARCHAR(150)
+        * phone : VARCHAR(20)
+        * status : VARCHAR(20)
+        * version : BIGINT
+        * created_at : TIMESTAMPTZ
+        * updated_at : TIMESTAMPTZ
     }
 
-    class AddressEntity <<Entity>> {
-        .. Fields ..
-        - id: Long
-        - recipientName: String
-        - phone: String
-        - line1: String
-        - line2: String
-        - ward: String
-        - district: String
-        - city: String
-        - province: String
-        - postalCode: String
-        - isDefault: boolean
-        .. Relationships ..
-        + customer: CustomerEntity
+    entity "addresses" as addresses {
+        * id : BIGINT <<PK, IDENTITY>>
+        --
+        * customer_id : BIGINT <<FK>>
+        * recipient_name : VARCHAR(150)
+        * phone : VARCHAR(20)
+        * line1 : VARCHAR(255)
+        line2 : VARCHAR(255)
+        * ward : VARCHAR(150)
+        * district : VARCHAR(150)
+        * city : VARCHAR(150)
+        * province : VARCHAR(150)
+        * postal_code : VARCHAR(20)
+        * is_default : BOOLEAN
+        * version : BIGINT
+        * created_at : TIMESTAMPTZ
+        * updated_at : TIMESTAMPTZ
     }
 }
 
-package "book" {
-    class BookEntity <<Entity>> {
-        .. Fields ..
-        - id: Long
-        - isbn: String
-        - title: String
-        - author: String
-        - description: String
-        - imageUrl: String
-        - price: BigDecimal
-        - stockQuantity: Integer
-        - active: boolean
+package "Phân hệ sách" {
+    entity "books" as books {
+        * id : BIGINT <<PK, IDENTITY>>
+        --
+        * isbn : VARCHAR(20) <<UK>>
+        * title : VARCHAR(255)
+        * author : VARCHAR(150)
+        description : TEXT
+        img_url : VARCHAR(500)
+        * price : NUMERIC(12,2)
+        * stock_quantity : INTEGER
+        * active : BOOLEAN
+        * version : BIGINT
+        * created_at : TIMESTAMPTZ
+        * updated_at : TIMESTAMPTZ
     }
 }
 
-package "purchase" {
-    class CartEntity <<Entity>> {
-        .. Fields ..
-        - id: Long
-        .. Relationships ..
-        + customer: CustomerEntity
-        + items: List<CartItemEntity>
+package "Phân hệ mua hàng" {
+    entity "carts" as carts {
+        * id : BIGINT <<PK, IDENTITY>>
+        --
+        * customer_id : BIGINT <<FK, UK>>
+        * version : BIGINT
+        * created_at : TIMESTAMPTZ
+        * updated_at : TIMESTAMPTZ
     }
 
-    class CartItemEntity <<Entity>> {
-        .. Fields ..
-        - id: Long
-        - quantity: Integer
-        - unitPriceSnapshot: BigDecimal
-        .. Relationships ..
-        + cart: CartEntity
-        + book: BookEntity
+    entity "cart_items" as cart_items {
+        * id : BIGINT <<PK, IDENTITY>>
+        --
+        * cart_id : BIGINT <<FK>>
+        * book_id : BIGINT <<FK>>
+        * quantity : INTEGER
+        * unit_price_snapshot : NUMERIC(12,2)
+        * version : BIGINT
+        * created_at : TIMESTAMPTZ
+        * updated_at : TIMESTAMPTZ
     }
 
-    class OrderEntity <<Entity>> {
-        .. Fields ..
-        - id: Long
-        - status: OrderStatus
-        - totalAmount: BigDecimal
-        - shippingFullName: String
-        - shippingPhone: String
-        - shippingLine1: String
-        - shippingLine2: String
-        - shippingWard: String
-        - shippingDistrict: String
-        - shippingCity: String
-        - shippingProvince: String
-        - shippingPostalCode: String
-        - placedAt: Instant
-        - cancelledAt: Instant
-        .. Relationships ..
-        + customer: CustomerEntity
-        + items: List<OrderItemEntity>
+    entity "orders" as orders {
+        * id : BIGINT <<PK, IDENTITY>>
+        --
+        * customer_id : BIGINT <<FK>>
+        * status : VARCHAR(20)
+        * total_amount : NUMERIC(12,2)
+        * shipping_full_name : VARCHAR(150)
+        * shipping_phone : VARCHAR(20)
+        * shipping_line1 : VARCHAR(255)
+        shipping_line2 : VARCHAR(255)
+        * shipping_ward : VARCHAR(150)
+        * shipping_district : VARCHAR(150)
+        * shipping_city : VARCHAR(150)
+        * shipping_province : VARCHAR(150)
+        * shipping_postal_code : VARCHAR(20)
+        placed_at : TIMESTAMPTZ
+        cancelled_at : TIMESTAMPTZ
+        * version : BIGINT
+        * created_at : TIMESTAMPTZ
+        * updated_at : TIMESTAMPTZ
     }
 
-    class OrderItemEntity <<Entity>> {
-        -- Standalone entity: does NOT extend AuditableEntity --
-        .. Fields ..
-        - id: Long
-        - bookTitleSnapshot: String
-        - bookIsbnSnapshot: String
-        - unitPriceSnapshot: BigDecimal
-        - quantity: Integer
-        - lineTotal: BigDecimal
-        - createdAt: Instant
-        .. Relationships ..
-        + order: OrderEntity
-        + book: BookEntity
+    entity "order_items" as order_items {
+        * id : BIGINT <<PK, IDENTITY>>
+        --
+        * order_id : BIGINT <<FK>>
+        * book_id : BIGINT <<FK>>
+        * book_title_snapshot : VARCHAR(255)
+        * book_isbn_snapshot : VARCHAR(20)
+        * unit_price_snapshot : NUMERIC(12,2)
+        * quantity : INTEGER
+        * line_total : NUMERIC(12,2)
+        * created_at : TIMESTAMPTZ
     }
 }
 
-' ─── ENUMS ──────────────────────────────────────────────────────
-hide enum methods
-class CustomerStatus <<enumeration>> {
-    ACTIVE
-    INACTIVE
-}
-class OrderStatus <<enumeration>> {
-    PENDING
-    PLACED
-    CANCELLED
-}
+customers ||--o{ addresses : "có"
+customers ||--|| carts : "sở hữu"
+customers ||--o{ orders : "đặt hàng"
 
-' ─── RELATIONSHIPS ───────────────────────────────────────────────
+carts ||--o{ cart_items : "chứa"
+cart_items }o--|| books : "tham chiếu"
 
-' Customer → Address (1:N)
-CustomerEntity "1" o-- "0..N" AddressEntity : addresses
-
-' Customer ↔ Cart (1:1)
-CustomerEntity "1" o-- "1" CartEntity : cart
-
-' Cart → CartItem (1:N)
-CartEntity "1" o-- "0..N" CartItemEntity : items
-
-' CartItem → Book (N:1)
-CartItemEntity "N" *-- "1" BookEntity : book
-
-' Order → Customer (N:1)
-OrderEntity "N" *-- "1" CustomerEntity : customer
-
-' Order → OrderItem (1:N)
-OrderEntity "1" o-- "0..N" OrderItemEntity : items
-
-' OrderItem → Book (N:1)
-OrderItemEntity "N" *-- "1" BookEntity : book
-
-' Enums
-CustomerEntity .. CustomerStatus
-OrderEntity .. OrderStatus
-
+orders ||--o{ order_items : "gồm"
+order_items }o--|| books : "tham chiếu"
 @enduml
-```
-<!-- docs/images/db/db-01.svg -->
-![Bookstore_Class_Diagram](docs/images/db/db-01.svg)
-
-
-
-
-
-
-### Giải thích / Explanation
-
-```
-CustomerEntity
-  ├── addresses (1:N via AddressEntity.customer) ───→ AddressEntity
-  ├── cart      (1:1 via CartEntity.customer_id) ─────→ CartEntity
-  └── orders   (1:N via OrderEntity.customer) ─────────→ OrderEntity
-
-AddressEntity
-  └── customer (N:1) ─────────────────────────────────→ CustomerEntity
-
-CartEntity
-  ├── customer (1:1) ─────────────────────────────────→ CustomerEntity
-  └── items    (1:N via CartItemEntity.cart) ─────────→ CartItemEntity
-
-CartItemEntity
-  ├── cart (N:1) ──────────────────────────────────────→ CartEntity
-  └── book (N:1) ──────────────────────────────────────→ BookEntity
-
-OrderEntity
-  ├── customer (N:1) ──────────────────────────────────→ CustomerEntity
-  └── items    (1:N via OrderItemEntity.order) ────────→ OrderItemEntity
-
-OrderItemEntity
-  ├── order (N:1) ─────────────────────────────────────→ OrderEntity
-  └── book  (N:1) ──────────────────────────────────────→ BookEntity
 ```
 
 ---
 
-## 2. ER Diagram — Chen Notation (PlantUML)
+### 2.2 Sơ đồ quan hệ — Chen Notation ER Diagram
 
-> Entity-Relationship diagram theo ký hiệu Chen. Mỗi bảng được biểu diễn dưới dạng **矩形 (rectangle)** với **ovals** cho các thuộc tính, **kim cương (diamonds)** cho quan hệ.
+Sơ đồ Chen dưới đây là góc nhìn ý niệm: chỉ giữ các thuộc tính nghiệp vụ cốt
+lõi, lược bỏ kiểu dữ liệu và các cột khóa ngoại đã được thể hiện bằng quan hệ.
+Các trường audit như `created_at`, `updated_at` và `version` cũng được lược bỏ.
+Chi tiết physical schema xem ở mục 3.
 
 ```plantuml
-@startuml Bookstore_ER_Chen
-!theme plain
+@startchen
+left to right direction
 
-' ─── ENTITIES ────────────────────────────────────────────────────
-
-entity "<b>customers</b>\n\n{PK} id\n\n" as customers <<ENTITY>> #F5F5F5 {
-    **id** : BIGINT
-    email : VARCHAR(255)  {UQ}
-    password_hash : VARCHAR(255)
-    full_name : VARCHAR(150)
-    phone : VARCHAR(20)
-    status : VARCHAR(20)
-    version : BIGINT
-    created_at : TIMESTAMPTZ
-    updated_at : TIMESTAMPTZ
+entity "customers" as CUSTOMERS {
+    id <<key>>
+    email
+    password_hash
+    full_name
+    phone
+    status
 }
 
-entity "<b>addresses</b>\n\n{PK} id\n\n" as addresses <<ENTITY>> #F5F5F5 {
-    **id** : BIGINT
-    {FK} customer_id : BIGINT
-    recipient_name : VARCHAR(150)
-    phone : VARCHAR(20)
-    line1 : VARCHAR(255)
-    line2 : VARCHAR(255)
-    ward : VARCHAR(150)
-    district : VARCHAR(150)
-    city : VARCHAR(150)
-    province : VARCHAR(150)
-    postal_code : VARCHAR(20)
-    is_default : BOOLEAN
-    version : BIGINT
-    created_at : TIMESTAMPTZ
-    updated_at : TIMESTAMPTZ
+entity "addresses" as ADDRESSES {
+    id <<key>>
+    recipient_name
+    phone
+    line1
+    line2
+    ward
+    district
+    city
+    province
+    postal_code
+    is_default
 }
 
-entity "<b>books</b>\n\n{PK} id\n\n" as books <<ENTITY>> #F5F5F5 {
-    **id** : BIGINT
-    isbn : VARCHAR(20)  {UQ}
-    title : VARCHAR(255)
-    author : VARCHAR(150)
-    description : TEXT
-    img_url : VARCHAR(500)
-    price : NUMERIC(12,2)
-    stock_quantity : INTEGER
-    active : BOOLEAN
-    version : BIGINT
-    created_at : TIMESTAMPTZ
-    updated_at : TIMESTAMPTZ
+entity "books" as BOOKS {
+    id <<key>>
+    isbn
+    title
+    author
+    description
+    img_url
+    price
+    stock_quantity
+    active
 }
 
-entity "<b>carts</b>\n\n{PK} id\n\n" as carts <<ENTITY>> #F5F5F5 {
-    **id** : BIGINT
-    {FK} customer_id : BIGINT  {UQ}
-    version : BIGINT
-    created_at : TIMESTAMPTZ
-    updated_at : TIMESTAMPTZ
+entity "carts" as CARTS {
+    id <<key>>
 }
 
-entity "<b>cart_items</b>\n\n{PK} id\n\n" as cart_items <<ENTITY>> #F5F5F5 {
-    **id** : BIGINT
-    {FK} cart_id : BIGINT
-    {FK} book_id : BIGINT
-    quantity : INTEGER
-    unit_price_snapshot : NUMERIC(12,2)
-    version : BIGINT
-    created_at : TIMESTAMPTZ
-    updated_at : TIMESTAMPTZ
+entity "cart_items" as CART_ITEMS {
+    id <<key>>
+    quantity
+    unit_price_snapshot
 }
 
-entity "<b>orders</b>\n\n{PK} id\n\n" as orders <<ENTITY>> #F5F5F5 {
-    **id** : BIGINT
-    {FK} customer_id : BIGINT
-    status : VARCHAR(20)
-    total_amount : NUMERIC(12,2)
-    shipping_full_name : VARCHAR(150)
-    shipping_phone : VARCHAR(20)
-    shipping_line1 : VARCHAR(255)
-    shipping_line2 : VARCHAR(255)
-    shipping_ward : VARCHAR(150)
-    shipping_district : VARCHAR(150)
-    shipping_city : VARCHAR(150)
-    shipping_province : VARCHAR(150)
-    shipping_postal_code : VARCHAR(20)
-    placed_at : TIMESTAMPTZ
-    cancelled_at : TIMESTAMPTZ
-    version : BIGINT
-    created_at : TIMESTAMPTZ
-    updated_at : TIMESTAMPTZ
+entity "orders" as ORDERS {
+    id <<key>>
+    status
+    total_amount
+    shipping_full_name
+    shipping_phone
+    shipping_line1
+    shipping_line2
+    shipping_ward
+    shipping_district
+    shipping_city
+    shipping_province
+    shipping_postal_code
+    placed_at
+    cancelled_at
 }
 
-entity "<b>order_items</b>\n\n{PK} id\n\n" as order_items <<ENTITY>> #F5F5F5 {
-    **id** : BIGINT
-    {FK} order_id : BIGINT
-    {FK} book_id : BIGINT
-    book_title_snapshot : VARCHAR(255)
-    book_isbn_snapshot : VARCHAR(20)
-    unit_price_snapshot : NUMERIC(12,2)
-    quantity : INTEGER
-    line_total : NUMERIC(12,2)
-    created_at : TIMESTAMPTZ
+entity "order_items" as ORDER_ITEMS {
+    id <<key>>
+    book_title_snapshot
+    book_isbn_snapshot
+    unit_price_snapshot
+    quantity
+    line_total
 }
 
-' ─── RELATIONSHIPS (Chen diamonds) ───────────────────────────────
+relationship "CÓ ĐỊA CHỈ" as HAS_ADDRESS {
+}
+CUSTOMERS -1- HAS_ADDRESS
+HAS_ADDRESS -N- ADDRESSES
 
-' addresses ↔ customers
-(addresses, customers) : N_customer_has_N_addresses
+relationship "SỞ HỮU GIỎ" as OWNS_CART {
+}
+CUSTOMERS -1- OWNS_CART
+OWNS_CART -1- CARTS
 
-' carts ↔ customers
-(carts, customers) : 1_customer_has_1_cart
+relationship "ĐẶT HÀNG" as PLACES_ORDER {
+}
+CUSTOMERS -1- PLACES_ORDER
+PLACES_ORDER -N- ORDERS
 
-' cart_items ↔ carts
-(cart_items, carts) : N_cart_contains_N_cart_items
+relationship "CHỨA MỤC GIỎ" as CART_HAS_ITEM {
+}
+CARTS -1- CART_HAS_ITEM
+CART_HAS_ITEM -N- CART_ITEMS
 
-' cart_items ↔ books
-(cart_items, books) : N_cart_item_references_1_book
+relationship "SÁCH TRONG GIỎ" as CART_ITEM_BOOK {
+}
+BOOKS -1- CART_ITEM_BOOK
+CART_ITEM_BOOK -N- CART_ITEMS
 
-' orders ↔ customers
-(orders, customers) : N_customer_places_N_orders
+relationship "GỒM MỤC ĐƠN" as ORDER_HAS_ITEM {
+}
+ORDERS -1- ORDER_HAS_ITEM
+ORDER_HAS_ITEM -N- ORDER_ITEMS
 
-' order_items ↔ orders
-(order_items, orders) : N_order_contains_N_order_items
+relationship "SÁCH TRONG ĐƠN" as ORDER_ITEM_BOOK {
+}
+BOOKS -1- ORDER_ITEM_BOOK
+ORDER_ITEM_BOOK -N- ORDER_ITEMS
 
-' order_items ↔ books
-(order_items, books) : N_order_item_references_1_book
-
-' ─── CARDINALITY LABELS ──────────────────────────────────────────
-note right of customers
-  1 customer ──┬── 0..N addresses
-  1 customer ──┼── 1 cart
-  1 customer ──┴── 0..N orders
-end note
-
-note bottom of addresses
-  UNIQUE(customer_id) WHERE is_default = TRUE
-  (Partial unique index)
-end note
-
-note bottom of cart_items
-  UNIQUE(cart_id, book_id)
-  (Cart cannot have duplicate book entries)
-end note
-
-note right of orders
-  Shipping address is DENORMALIZED
-  (stored directly, not FK to addresses)
-  Prevents broken address history
-end note
-
-note bottom of order_items
-  Standalone entity — does NOT inherit
-  AuditableEntity (@MappedSuperclass)
-  Has only createdAt (no updatedAt/version)
-end note
-
-@enduml
-```
-<!-- docs/images/db/db-02.svg -->
-![Bookstore_ER_Chen](docs/images/db/db-02.svg)
-
-
-
-
-
-
-### Chen Notation Legend
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│  CHEN NOTATION KEYS / BẢNG CHÚ GIẢI KÝ HIỆU CHEN           │
-├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│  ENTITY (Rectangle)                                         │
-│  ┌──────────────┐                                           │
-│  │  entity_name │  ← Bảng trong database                   │
-│  └──────────────┘                                           │
-│                                                             │
-│  ATTRIBUTE (Oval)                                           │
-│      (id)            ← Thuộc tính đa trị (multi-valued)    │
-│      *id*            ← Thuộc tính khóa (key)               │
-│      (id)            ← Thuộc tính suy diễn (derived)        │
-│      **id**          ← Thuộc tính ghép (composite)          │
-│                                                             │
-│  RELATIONSHIP (Diamond)                                     │
-│       ◇                                                     │
-│    relates                                                   │
-│                                                             │
-│  CARDINALITY                                                │
-│    1         ← Exactly one                                  │
-│    N         ← Many (zero or more)                          │
-│    0..1      ← Zero or one                                  │
-│    1..N      ← One or more                                 │
-│                                                             │
-│  ┌────────┐    ┌────────┐                                   │
-│  │   E1   │ 1  │   E2   │  ← 1:E1 relates to 1 E2          │
-│  └────────┘───◇└────────┘                                   │
-│                                                             │
-│  ┌────────┐    ┌────────┐                                   │
-│  │   E1   │ 1  │   E2   │  ← 1:E1 relates to N E2           │
-│  └────────┘◀──◇──▶│  E2   │                                   │
-│       N            └────────┘                                │
-│                                                             │
-└─────────────────────────────────────────────────────────────┘
+@endchen
 ```
 
 ---
 
-## 3. Table Specifications / Thông số Bảng
+## 3. Bảng chi tiết (3NF)
 
-> **Quy ước / Convention:**
-> - **Khóa chính**: đậm / bold
-> - **Khóa ngoại**: gạch chân / underline
-> - Các giá trị enum liệt kê cụ thể
+### 3.1 Auth Module
 
----
+#### `customers`
 
-### 3.1 `customers` — Tài khoản khách hàng / Customer Accounts
+Khách hàng hệ thống. Mỗi tài khoản định danh bằng email duy nhất.
 
-| STT | Thuộc tính | Kiểu dữ liệu | Mô tả |
-|-----|-----------|---------------|-------|
-| 1 | **id** | BIGINT | Khóa chính, tự tăng (IDENTITY) |
-| 2 | email | VARCHAR(255) | Email đăng nhập, duy nhất không trùng |
-| 3 | password_hash | VARCHAR(255) | BCrypt hash của mật khẩu |
-| 4 | full_name | VARCHAR(150) | Họ tên đầy đủ |
-| 5 | phone | VARCHAR(20) | Số điện thoại liên hệ |
-| 6 | status | VARCHAR(20) | Trạng thái: **ACTIVE**, **INACTIVE** |
-| 7 | version | BIGINT | Optimistic lock (mặc định 0) |
-| 8 | created_at | TIMESTAMPTZ | Thời điểm tạo (not null, không sửa được) |
-| 9 | updated_at | TIMESTAMPTZ | Thời điểm cập nhật gần nhất |
+| Cột             | Kiểu dữ liệu   | Cho phép `NULL` | Mặc định            | Mô tả                            |
+| --------------- | -------------- | --------------- | ------------------- | -------------------------------- |
+| `id`            | `BIGINT`       | NOT NULL        | `IDENTITY`          | Khóa chính (auto-increment)      |
+| `email`         | `VARCHAR(255)` | NOT NULL        | —                   | Địa chỉ email (duy nhất)         |
+| `password_hash` | `VARCHAR(255)` | NOT NULL        | —                   | Mật khẩu đã băm                  |
+| `full_name`     | `VARCHAR(150)` | NOT NULL        | —                   | Họ và tên                        |
+| `phone`         | `VARCHAR(20)`  | NOT NULL        | —                   | Số điện thoại                    |
+| `status`        | `VARCHAR(20)`  | NOT NULL        | —                   | Trạng thái: `ACTIVE`, `INACTIVE` |
+| `version`       | `BIGINT`       | NOT NULL        | `0`                 | Optimistic locking               |
+| `created_at`    | `TIMESTAMPTZ`  | NOT NULL        | `CURRENT_TIMESTAMP` | Thời điểm tạo (UTC)              |
+| `updated_at`    | `TIMESTAMPTZ`  | NOT NULL        | `CURRENT_TIMESTAMP` | Thời điểm cập nhật cuối (UTC)    |
 
-**Constraints:**
-- `UNIQUE(email)` — mỗi email chỉ đăng ký một tài khoản
-- `CHECK (status IN ('ACTIVE', 'INACTIVE'))`
+**Ràng buộc:**
 
-**Indexes:**
-- `email` — unique, tự động
+| Tên                    | Loại        | Mô tả                              |
+| ---------------------- | ----------- | ---------------------------------- |
+| `customers_pkey`       | PRIMARY KEY | `id`                               |
+| `customers_email_key`  | UNIQUE      | `email`                            |
+| `chk_customers_status` | CHECK       | `status IN ('ACTIVE', 'INACTIVE')` |
 
 ---
 
-### 3.2 `addresses` — Địa chỉ giao hàng / Shipping Addresses
+#### `addresses`
 
-| STT | Thuộc tính | Kiểu dữ liệu | Mô tả |
-|-----|-----------|---------------|-------|
-| 1 | **id** | BIGINT | Khóa chính, tự tăng (IDENTITY) |
-| 2 | <u>customer_id</u> | BIGINT | Khóa ngoại → `customers(id)` |
-| 3 | recipient_name | VARCHAR(150) | Tên người nhận |
-| 4 | phone | VARCHAR(20) | Số điện thoại người nhận |
-| 5 | line1 | VARCHAR(255) | Địa chỉ dòng 1 (số nhà, đường) |
-| 6 | line2 | VARCHAR(255) | Địa chỉ dòng 2 (tùy chọn) |
-| 7 | ward | VARCHAR(150) | Phường / Xã |
-| 8 | district | VARCHAR(150) | Quận / Huyện |
-| 9 | city | VARCHAR(150) | Thành phố |
-| 10 | province | VARCHAR(150) | Tỉnh |
-| 11 | postal_code | VARCHAR(20) | Mã bưu điện |
-| 12 | is_default | BOOLEAN | Địa chỉ mặc định (mỗi khách 1 địa chỉ mặc định) |
-| 13 | version | BIGINT | Optimistic lock |
-| 14 | created_at | TIMESTAMPTZ | Thời điểm tạo |
-| 15 | updated_at | TIMESTAMPTZ | Thời điểm cập nhật gần nhất |
+Địa chỉ giao hàng của khách hàng. Mỗi khách hàng có thể có nhiều địa chỉ nhưng
+chỉ một địa chỉ mặc định (đảm bảo bởi partial unique index).
 
-**Constraints:**
-- `FK(customer_id) → customers(id)` — xóa cascade
-- `UNIQUE(customer_id) WHERE is_default = TRUE` — chỉ 1 địa chỉ mặc định mỗi khách
+| Cột              | Kiểu dữ liệu   | Cho phép `NULL` | Mặc định            | Mô tả                         |
+| ---------------- | -------------- | --------------- | ------------------- | ----------------------------- |
+| `id`             | `BIGINT`       | NOT NULL        | `IDENTITY`          | Khóa chính (auto-increment)   |
+| `customer_id`    | `BIGINT`       | NOT NULL        | —                   | Khách hàng sở hữu địa chỉ     |
+| `recipient_name` | `VARCHAR(150)` | NOT NULL        | —                   | Tên người nhận                |
+| `phone`          | `VARCHAR(20)`  | NOT NULL        | —                   | Số điện thoại người nhận      |
+| `line1`          | `VARCHAR(255)` | NOT NULL        | —                   | Địa chỉ dòng 1                |
+| `line2`          | `VARCHAR(255)` | NULL            | —                   | Địa chỉ dòng 2 (tùy chọn)     |
+| `ward`           | `VARCHAR(150)` | NOT NULL        | —                   | Phường/xã                     |
+| `district`       | `VARCHAR(150)` | NOT NULL        | —                   | Quận/huyện                    |
+| `city`           | `VARCHAR(150)` | NOT NULL        | —                   | Thành phố                     |
+| `province`       | `VARCHAR(150)` | NOT NULL        | —                   | Tỉnh/thành                    |
+| `postal_code`    | `VARCHAR(20)`  | NOT NULL        | —                   | Mã bưu chính                  |
+| `is_default`     | `BOOLEAN`      | NOT NULL        | `FALSE`             | Địa chỉ mặc định              |
+| `version`        | `BIGINT`       | NOT NULL        | `0`                 | Optimistic locking            |
+| `created_at`     | `TIMESTAMPTZ`  | NOT NULL        | `CURRENT_TIMESTAMP` | Thời điểm tạo (UTC)           |
+| `updated_at`     | `TIMESTAMPTZ`  | NOT NULL        | `CURRENT_TIMESTAMP` | Thời điểm cập nhật cuối (UTC) |
 
-**Indexes:**
-- `idx_addresses_customer_id` ON `customer_id`
+**Ràng buộc:**
 
----
-
-### 3.3 `books` — Danh mục sách / Book Catalog
-
-| STT | Thuộc tính | Kiểu dữ liệu | Mô tả |
-|-----|-----------|---------------|-------|
-| 1 | **id** | BIGINT | Khóa chính, tự tăng (IDENTITY) |
-| 2 | isbn | VARCHAR(20) | Mã ISBN, duy nhất không trùng |
-| 3 | title | VARCHAR(255) | Tiêu đề sách |
-| 4 | author | VARCHAR(150) | Tên tác giả |
-| 5 | description | TEXT | Mô tả nội dung (không giới hạn độ dài) |
-| 6 | img_url | VARCHAR(500) | URL ảnh bìa sách |
-| 7 | price | NUMERIC(12,2) | Giá bán (tối thiểu 0) |
-| 8 | stock_quantity | INTEGER | Số lượng tồn kho (tối thiểu 0) |
-| 9 | active | BOOLEAN | Sách có đang được bán không |
-| 10 | version | BIGINT | Optimistic lock |
-| 11 | created_at | TIMESTAMPTZ | Thời điểm tạo |
-| 12 | updated_at | TIMESTAMPTZ | Thời điểm cập nhật gần nhất |
-
-**Constraints:**
-- `UNIQUE(isbn)`
-- `CHECK (price >= 0)`
-- `CHECK (stock_quantity >= 0)`
-
-**Indexes:**
-- `idx_books_title` ON `title`
-- `isbn` — unique, tự động
+| Tên                                 | Loại             | Mô tả                                                                      |
+| ----------------------------------- | ---------------- | -------------------------------------------------------------------------- |
+| `addresses_pkey`                    | PRIMARY KEY      | `id`                                                                       |
+| `fk_addresses_customer`             | FOREIGN KEY      | `customer_id` → `customers(id)`                                            |
+| `uq_addresses_default_per_customer` | UNIQUE (partial) | `customer_id` với điều kiện `is_default = TRUE` — mỗi khách chỉ 1 mặc định |
 
 ---
 
-### 3.4 `carts` — Giỏ hàng / Shopping Carts
+### 3.2 Book Module
 
-| STT | Thuộc tính | Kiểu dữ liệu | Mô tả |
-|-----|-----------|---------------|-------|
-| 1 | **id** | BIGINT | Khóa chính, tự tăng (IDENTITY) |
-| 2 | <u>customer_id</u> | BIGINT | Khóa ngoại → `customers(id)`, duy nhất (mỗi khách 1 giỏ) |
-| 3 | version | BIGINT | Optimistic lock |
-| 4 | created_at | TIMESTAMPTZ | Thời điểm tạo |
-| 5 | updated_at | TIMESTAMPTZ | Thời điểm cập nhật gần nhất |
+#### `books`
 
-**Constraints:**
-- `UNIQUE(customer_id)` — đảm bảo 1 cart per customer
-- `FK(customer_id) → customers(id)` — xóa cascade
+Sách trong hệ thống. Hỗ trợ ẩn sách (`active = FALSE`) thay vì xóa vật lý.
 
-**Indexes:**
-- `idx_carts_customer_id` ON `customer_id`
+| Cột              | Kiểu dữ liệu     | Cho phép `NULL` | Mặc định            | Mô tả                         |
+| ---------------- | ---------------- | --------------- | ------------------- | ----------------------------- |
+| `id`             | `BIGINT`         | NOT NULL        | `IDENTITY`          | Khóa chính (auto-increment)   |
+| `isbn`           | `VARCHAR(20)`    | NOT NULL        | —                   | Mã ISBN (duy nhất)            |
+| `title`          | `VARCHAR(255)`   | NOT NULL        | —                   | Tên sách                      |
+| `author`         | `VARCHAR(150)`   | NOT NULL        | —                   | Tác giả                       |
+| `description`    | `TEXT`           | NULL            | —                   | Mô tả sách                    |
+| `img_url`        | `VARCHAR(500)`   | NULL            | —                   | URL ảnh bìa                   |
+| `price`          | `NUMERIC(12, 2)` | NOT NULL        | —                   | Giá bán                       |
+| `stock_quantity` | `INTEGER`        | NOT NULL        | —                   | Số lượng tồn kho              |
+| `active`         | `BOOLEAN`        | NOT NULL        | `TRUE`              | Sách đang hiển thị            |
+| `version`        | `BIGINT`         | NOT NULL        | `0`                 | Optimistic locking            |
+| `created_at`     | `TIMESTAMPTZ`    | NOT NULL        | `CURRENT_TIMESTAMP` | Thời điểm tạo (UTC)           |
+| `updated_at`     | `TIMESTAMPTZ`    | NOT NULL        | `CURRENT_TIMESTAMP` | Thời điểm cập nhật cuối (UTC) |
 
----
+**Ràng buộc:**
 
-### 3.5 `cart_items` — Mặt hàng trong giỏ / Cart Line Items
-
-| STT | Thuộc tính | Kiểu dữ liệu | Mô tả |
-|-----|-----------|---------------|-------|
-| 1 | **id** | BIGINT | Khóa chính, tự tăng (IDENTITY) |
-| 2 | <u>cart_id</u> | BIGINT | Khóa ngoại → `carts(id)`, xóa cascade |
-| 3 | <u>book_id</u> | BIGINT | Khóa ngoại → `books(id)` |
-| 4 | quantity | INTEGER | Số lượng mua (tối thiểu > 0) |
-| 5 | unit_price_snapshot | NUMERIC(12,2) | Giá tại thời điểm thêm vào giỏ (snapshot) |
-| 6 | version | BIGINT | Optimistic lock |
-| 7 | created_at | TIMESTAMPTZ | Thời điểm tạo |
-| 8 | updated_at | TIMESTAMPTZ | Thời điểm cập nhật gần nhất |
-
-**Constraints:**
-- `FK(cart_id) → carts(id) ON DELETE CASCADE`
-- `FK(book_id) → books(id)`
-- `UNIQUE(cart_id, book_id)` — mỗi sách chỉ xuất hiện 1 dòng trong 1 giỏ
-- `CHECK (quantity > 0)`
-- `CHECK (unit_price_snapshot >= 0)`
-
-**Indexes:**
-- `idx_cart_items_cart_id` ON `cart_id`
-- `idx_cart_items_book_id` ON `book_id`
+| Tên               | Loại        | Mô tả                 |
+| ----------------- | ----------- | --------------------- |
+| `books_pkey`      | PRIMARY KEY | `id`                  |
+| `books_isbn_key`  | UNIQUE      | `isbn`                |
+| `chk_books_price` | CHECK       | `price >= 0`          |
+| `chk_books_stock` | CHECK       | `stock_quantity >= 0` |
 
 ---
 
-### 3.6 `orders` — Đơn hàng / Customer Orders
+### 3.3 Purchase Module
 
-| STT | Thuộc tính | Kiểu dữ liệu | Mô tả |
-|-----|-----------|---------------|-------|
-| 1 | **id** | BIGINT | Khóa chính, tự tăng (IDENTITY) |
-| 2 | <u>customer_id</u> | BIGINT | Khóa ngoại → `customers(id)` |
-| 3 | status | VARCHAR(20) | Trạng thái: **PENDING**, **PLACED**, **CANCELLED** |
-| 4 | total_amount | NUMERIC(12,2) | Tổng tiền đơn hàng (tối thiểu 0) |
-| 5 | shipping_full_name | VARCHAR(150) | Tên người nhận (snapshot) |
-| 6 | shipping_phone | VARCHAR(20) | SĐT người nhận (snapshot) |
-| 7 | shipping_line1 | VARCHAR(255) | Địa chỉ dòng 1 (snapshot) |
-| 8 | shipping_line2 | VARCHAR(255) | Địa chỉ dòng 2 (snapshot, nullable) |
-| 9 | shipping_ward | VARCHAR(150) | Phường / Xã (snapshot) |
-| 10 | shipping_district | VARCHAR(150) | Quận / Huyện (snapshot) |
-| 11 | shipping_city | VARCHAR(150) | Thành phố (snapshot) |
-| 12 | shipping_province | VARCHAR(150) | Tỉnh (snapshot) |
-| 13 | shipping_postal_code | VARCHAR(20) | Mã bưu điện (snapshot) |
-| 14 | placed_at | TIMESTAMPTZ | Thời điểm xác nhận đặt hàng (nullable) |
-| 15 | cancelled_at | TIMESTAMPTZ | Thời điểm hủy đơn (nullable) |
-| 16 | version | BIGINT | Optimistic lock |
-| 17 | created_at | TIMESTAMPTZ | Thời điểm tạo |
-| 18 | updated_at | TIMESTAMPTZ | Thời điểm cập nhật gần nhất |
+#### `carts`
 
-**Constraints:**
-- `FK(customer_id) → customers(id)`
-- `CHECK (status IN ('PENDING', 'PLACED', 'CANCELLED'))`
-- `CHECK (total_amount >= 0)`
+Giỏ hàng — mỗi khách hàng có đúng một giỏ hàng (quan hệ 1:1).
 
-**Indexes:**
-- `idx_orders_customer_created_at` ON `(customer_id, created_at DESC)`
+| Cột           | Kiểu dữ liệu  | Cho phép `NULL` | Mặc định            | Mô tả                            |
+| ------------- | ------------- | --------------- | ------------------- | -------------------------------- |
+| `id`          | `BIGINT`      | NOT NULL        | `IDENTITY`          | Khóa chính (auto-increment)      |
+| `customer_id` | `BIGINT`      | NOT NULL        | —                   | Khách hàng sở hữu giỏ (duy nhất) |
+| `version`     | `BIGINT`      | NOT NULL        | `0`                 | Optimistic locking               |
+| `created_at`  | `TIMESTAMPTZ` | NOT NULL        | `CURRENT_TIMESTAMP` | Thời điểm tạo (UTC)              |
+| `updated_at`  | `TIMESTAMPTZ` | NOT NULL        | `CURRENT_TIMESTAMP` | Thời điểm cập nhật cuối (UTC)    |
 
-**Lưu ý / Note:**
-- Shipping address là **denormalized snapshot** — địa chỉ được lưu trực tiếp vào `orders`, không có FK sang `addresses`. Lý do: đơn hàng cần giữ nguyên địa chỉ giao hàng tại thời điểm đặt, dù khách hàng sau đó sửa hoặc xóa địa chỉ gốc.
+**Ràng buộc:**
+
+| Tên                     | Loại        | Mô tả                                    |
+| ----------------------- | ----------- | ---------------------------------------- |
+| `carts_pkey`            | PRIMARY KEY | `id`                                     |
+| `carts_customer_id_key` | UNIQUE      | `customer_id` — mỗi khách chỉ 1 giỏ hàng |
+| `fk_carts_customer`     | FOREIGN KEY | `customer_id` → `customers(id)`          |
 
 ---
 
-### 3.7 `order_items` — Chi tiết đơn hàng / Order Line Items
+#### `cart_items`
 
-| STT | Thuộc tính | Kiểu dữ liệu | Mô tả |
-|-----|-----------|---------------|-------|
-| 1 | **id** | BIGINT | Khóa chính, tự tăng (IDENTITY) |
-| 2 | <u>order_id</u> | BIGINT | Khóa ngoại → `orders(id)`, xóa cascade |
-| 3 | <u>book_id</u> | BIGINT | Khóa ngoại → `books(id)` |
-| 4 | book_title_snapshot | VARCHAR(255) | Tiêu đề sách tại thời điểm đặt |
-| 5 | book_isbn_snapshot | VARCHAR(20) | ISBN tại thời điểm đặt |
-| 6 | unit_price_snapshot | NUMERIC(12,2) | Đơn giá tại thời điểm đặt |
-| 7 | quantity | INTEGER | Số lượng đặt mua (tối thiểu > 0) |
-| 8 | line_total | NUMERIC(12,2) | Thành tiền: `quantity × unit_price_snapshot` |
-| 9 | created_at | TIMESTAMPTZ | Thời điểm tạo dòng |
+Mục trong giỏ hàng. Mỗi sách chỉ xuất hiện một lần trong giỏ (tăng quantity thay
+vì thêm bản ghi). Cột `unit_price_snapshot` lưu giá tại thời điểm thêm vào giỏ.
 
-**Constraints:**
-- `FK(order_id) → orders(id) ON DELETE CASCADE` — xóa đơn → xóa hết items
-- `FK(book_id) → books(id)`
-- `CHECK (quantity > 0)`
-- `CHECK (unit_price_snapshot >= 0)`
-- `CHECK (line_total >= 0)`
+| Cột                   | Kiểu dữ liệu     | Cho phép `NULL` | Mặc định            | Mô tả                               |
+| --------------------- | ---------------- | --------------- | ------------------- | ----------------------------------- |
+| `id`                  | `BIGINT`         | NOT NULL        | `IDENTITY`          | Khóa chính (auto-increment)         |
+| `cart_id`             | `BIGINT`         | NOT NULL        | —                   | Giỏ hàng chứa mục này               |
+| `book_id`             | `BIGINT`         | NOT NULL        | —                   | Sách được thêm vào giỏ              |
+| `quantity`            | `INTEGER`        | NOT NULL        | —                   | Số lượng                            |
+| `unit_price_snapshot` | `NUMERIC(12, 2)` | NOT NULL        | —                   | Bản chụp đơn giá tại thời điểm thêm |
+| `version`             | `BIGINT`         | NOT NULL        | `0`                 | Optimistic locking                  |
+| `created_at`          | `TIMESTAMPTZ`    | NOT NULL        | `CURRENT_TIMESTAMP` | Thời điểm tạo (UTC)                 |
+| `updated_at`          | `TIMESTAMPTZ`    | NOT NULL        | `CURRENT_TIMESTAMP` | Thời điểm cập nhật cuối (UTC)       |
 
-**Indexes:**
-- `idx_order_items_order_id` ON `order_id`
+**Ràng buộc:**
 
-**Lưu ý / Note:**
-- Entity này **standalone**, không kế thừa `AuditableEntity` (không có `updated_at` hay `version`). Chỉ có `created_at` — dòng order item không bao giờ sửa sau khi tạo.
-
----
-
-## 4. Design Patterns & Notes / Các Mẫu Thiết kế & Ghi chú
-
-### 4.1 Snapshot Pattern (Price Freeze)
-
-Khi thêm sách vào giỏ hoặc đặt hàng, **giá tại thời điểm đó được ghi nhận** (snapshot) thay vì FK tham chiếu đến `books.price`. Lý do:
-
-```
-Sách "Clean Code" hôm nay:  $12.50
-                          ├─ CartItem.unit_price_snapshot = 12.50
-                          └─ OrderItem.unit_price_snapshot = 12.50
-
-Ngày mai giá đổi thành:   $15.00
-                          (Giỏ hàng & đơn cũ không bị ảnh hưởng)
-```
-
-### 4.2 Optimistic Locking
-
-Tất cả aggregate entities (trừ `OrderItemEntity`) sử dụng `@Version` để chống concurrent modification:
-
-```
-Customer → addresses, orders
-Book
-Cart → cart_items
-Order → order_items
-```
-
-### 4.3 Cascade Delete Paths
-
-```
-customers(id) ──┬──► ON DELETE CASCADE ──► addresses(customer_id)
-                ├──► ON DELETE CASCADE ──► carts(customer_id)
-                └──► ON DELETE RESTRICT ──► orders(customer_id)
-                                                    └──► ON DELETE CASCADE ──► order_items(order_id)
-
-books(id) ──────┬──► RESTRICT (không xóa sách đang có trong đơn/giỏ)
-                ├──► carts: không có FK
-                ├──► cart_items(book_id): FK nhưng không cascade
-                └──► order_items(book_id): FK nhưng không cascade
-```
-
-### 4.4 Address ≠ Shipping Address
-
-```
-addresses table          ← entity AddressEntity
-  └── Dùng cho: quản lý danh sách địa chỉ giao hàng của khách
-  └── Mỗi khách có thể có nhiều địa chỉ
-
-orders table             ← shipping_* columns
-  └── Dùng cho: lưu snapshot địa chỉ giao hàng TẠI THỜI ĐIỂM ĐẶT
-  └── Không có FK sang addresses (denormalized intent)
-  └── Lý do: đơn hàng phải giữ nguyên địa chỉ dù khách sửa/xóa sau này
-```
+| Tên                       | Loại        | Mô tả                                       |
+| ------------------------- | ----------- | ------------------------------------------- |
+| `cart_items_pkey`         | PRIMARY KEY | `id`                                        |
+| `fk_cart_items_cart`      | FOREIGN KEY | `cart_id` → `carts(id)` `ON DELETE CASCADE` |
+| `fk_cart_items_book`      | FOREIGN KEY | `book_id` → `books(id)`                     |
+| `uq_cart_items_cart_book` | UNIQUE      | `(cart_id, book_id)` — mỗi sách 1 lần/giỏ   |
+| `chk_cart_items_quantity` | CHECK       | `quantity > 0`                              |
+| `chk_cart_items_price`    | CHECK       | `unit_price_snapshot >= 0`                  |
 
 ---
 
-## 5. Database Migration History / Lịch sử Migration
+#### `orders`
 
-| File | Loại | Mô tả |
-|------|------|-------|
-| `V1__create_bookstore_schema.sql` | Schema | Tạo 7 bảng: customers, addresses, books, carts, cart_items, orders, order_items |
-| `V2__seed_demo_books_and_dev_account.sql` | Seed (dev) | Tạo 1 tài khoản dev + 6 sách mẫu. Chạy trong dev environment qua Flyway placeholders |
+Đơn hàng. Thông tin giao hàng được nhúng trực tiếp (embedded shipping address)
+thay vì tham chiếu bảng `addresses`, đảm bảo dữ liệu giao hàng không thay đổi
+khi khách sửa địa chỉ sau này.
 
-> Migration V2 nằm trong `src/main/resources/db/dev/` — chỉ chạy khi active profiles include `dev`.
+| Cột                    | Kiểu dữ liệu     | Cho phép `NULL` | Mặc định            | Mô tả                         |
+| ---------------------- | ---------------- | --------------- | ------------------- | ----------------------------- |
+| `id`                   | `BIGINT`         | NOT NULL        | `IDENTITY`          | Khóa chính (auto-increment)   |
+| `customer_id`          | `BIGINT`         | NOT NULL        | —                   | Khách hàng đặt đơn            |
+| `status`               | `VARCHAR(20)`    | NOT NULL        | —                   | Trạng thái đơn hàng           |
+| `total_amount`         | `NUMERIC(12, 2)` | NOT NULL        | —                   | Tổng giá trị đơn hàng         |
+| `shipping_full_name`   | `VARCHAR(150)`   | NOT NULL        | —                   | Họ tên người nhận             |
+| `shipping_phone`       | `VARCHAR(20)`    | NOT NULL        | —                   | SĐT người nhận                |
+| `shipping_line1`       | `VARCHAR(255)`   | NOT NULL        | —                   | Địa chỉ giao hàng dòng 1      |
+| `shipping_line2`       | `VARCHAR(255)`   | NULL            | —                   | Địa chỉ giao hàng dòng 2      |
+| `shipping_ward`        | `VARCHAR(150)`   | NOT NULL        | —                   | Phường/xã giao hàng           |
+| `shipping_district`    | `VARCHAR(150)`   | NOT NULL        | —                   | Quận/huyện giao hàng          |
+| `shipping_city`        | `VARCHAR(150)`   | NOT NULL        | —                   | Thành phố giao hàng           |
+| `shipping_province`    | `VARCHAR(150)`   | NOT NULL        | —                   | Tỉnh/thành giao hàng          |
+| `shipping_postal_code` | `VARCHAR(20)`    | NOT NULL        | —                   | Mã bưu chính giao hàng        |
+| `placed_at`            | `TIMESTAMPTZ`    | NULL            | —                   | Thời điểm đặt hàng (UTC)      |
+| `cancelled_at`         | `TIMESTAMPTZ`    | NULL            | —                   | Thời điểm hủy đơn (UTC)       |
+| `version`              | `BIGINT`         | NOT NULL        | `0`                 | Optimistic locking            |
+| `created_at`           | `TIMESTAMPTZ`    | NOT NULL        | `CURRENT_TIMESTAMP` | Thời điểm tạo (UTC)           |
+| `updated_at`           | `TIMESTAMPTZ`    | NOT NULL        | `CURRENT_TIMESTAMP` | Thời điểm cập nhật cuối (UTC) |
+
+**Ràng buộc:**
+
+| Tên                  | Loại        | Mô tả                                          |
+| -------------------- | ----------- | ---------------------------------------------- |
+| `orders_pkey`        | PRIMARY KEY | `id`                                           |
+| `fk_orders_customer` | FOREIGN KEY | `customer_id` → `customers(id)`                |
+| `chk_orders_status`  | CHECK       | `status IN ('PENDING', 'PLACED', 'CANCELLED')` |
+| `chk_orders_total`   | CHECK       | `total_amount >= 0`                            |
+
+---
+
+#### `order_items`
+
+Mục trong đơn hàng. Lưu bản chụp (snapshot) tiêu đề, ISBN và đơn giá sách tại
+thời điểm đặt hàng để đảm bảo tính bất biến của đơn hàng đã đặt.
+
+> **Lưu ý:** Bảng này **không** có `version` và `updated_at` — dữ liệu mục đơn
+> hàng là bất biến sau khi tạo.
+
+| Cột                   | Kiểu dữ liệu     | Cho phép `NULL` | Mặc định            | Mô tả                                |
+| --------------------- | ---------------- | --------------- | ------------------- | ------------------------------------ |
+| `id`                  | `BIGINT`         | NOT NULL        | `IDENTITY`          | Khóa chính (auto-increment)          |
+| `order_id`            | `BIGINT`         | NOT NULL        | —                   | Đơn hàng chứa mục này                |
+| `book_id`             | `BIGINT`         | NOT NULL        | —                   | Sách được đặt                        |
+| `book_title_snapshot` | `VARCHAR(255)`   | NOT NULL        | —                   | Bản chụp tiêu đề sách                |
+| `book_isbn_snapshot`  | `VARCHAR(20)`    | NOT NULL        | —                   | Bản chụp ISBN sách                   |
+| `unit_price_snapshot` | `NUMERIC(12, 2)` | NOT NULL        | —                   | Bản chụp đơn giá                     |
+| `quantity`            | `INTEGER`        | NOT NULL        | —                   | Số lượng                             |
+| `line_total`          | `NUMERIC(12, 2)` | NOT NULL        | —                   | Thành tiền (`quantity * unit_price`) |
+| `created_at`          | `TIMESTAMPTZ`    | NOT NULL        | `CURRENT_TIMESTAMP` | Thời điểm tạo (UTC)                  |
+
+**Ràng buộc:**
+
+| Tên                        | Loại        | Mô tả                                         |
+| -------------------------- | ----------- | --------------------------------------------- |
+| `order_items_pkey`         | PRIMARY KEY | `id`                                          |
+| `fk_order_items_order`     | FOREIGN KEY | `order_id` → `orders(id)` `ON DELETE CASCADE` |
+| `fk_order_items_book`      | FOREIGN KEY | `book_id` → `books(id)`                       |
+| `chk_order_items_quantity` | CHECK       | `quantity > 0`                                |
+| `chk_order_items_price`    | CHECK       | `unit_price_snapshot >= 0`                    |
+| `chk_order_items_total`    | CHECK       | `line_total >= 0`                             |
+
+---
+
+## 4. Giá trị enum / CHECK constraint
+
+| Bảng          | Cột                   | Giá trị hợp lệ                   | Mô tả                |
+| ------------- | --------------------- | -------------------------------- | -------------------- |
+| `customers`   | `status`              | `ACTIVE`, `INACTIVE`             | Trạng thái tài khoản |
+| `orders`      | `status`              | `PENDING`, `PLACED`, `CANCELLED` | Trạng thái đơn hàng  |
+| `books`       | `price`               | `>= 0`                           | Giá không âm         |
+| `books`       | `stock_quantity`      | `>= 0`                           | Tồn kho không âm     |
+| `cart_items`  | `quantity`            | `> 0`                            | Số lượng dương       |
+| `cart_items`  | `unit_price_snapshot` | `>= 0`                           | Đơn giá không âm     |
+| `orders`      | `total_amount`        | `>= 0`                           | Tổng tiền không âm   |
+| `order_items` | `quantity`            | `> 0`                            | Số lượng dương       |
+| `order_items` | `unit_price_snapshot` | `>= 0`                           | Đơn giá không âm     |
+| `order_items` | `line_total`          | `>= 0`                           | Thành tiền không âm  |
+
+---
+
+## 5. Bảng tham chiếu
+
+### 5.1 Khóa ngoại (Foreign Keys)
+
+| Tên                     | Bảng nguồn    | Cột           | Bảng đích   | Cột đích | ON DELETE  |
+| ----------------------- | ------------- | ------------- | ----------- | -------- | ---------- |
+| `fk_addresses_customer` | `addresses`   | `customer_id` | `customers` | `id`     | (mặc định) |
+| `fk_carts_customer`     | `carts`       | `customer_id` | `customers` | `id`     | (mặc định) |
+| `fk_cart_items_cart`    | `cart_items`  | `cart_id`     | `carts`     | `id`     | `CASCADE`  |
+| `fk_cart_items_book`    | `cart_items`  | `book_id`     | `books`     | `id`     | (mặc định) |
+| `fk_orders_customer`    | `orders`      | `customer_id` | `customers` | `id`     | (mặc định) |
+| `fk_order_items_order`  | `order_items` | `order_id`    | `orders`    | `id`     | `CASCADE`  |
+| `fk_order_items_book`   | `order_items` | `book_id`     | `books`     | `id`     | (mặc định) |
+
+### 5.2 Chỉ mục (Indexes)
+
+| Tên                                 | Bảng          | Cột / Biểu thức                  | Loại              | Mô tả                                       |
+| ----------------------------------- | ------------- | -------------------------------- | ----------------- | ------------------------------------------- |
+| `idx_addresses_customer_id`         | `addresses`   | `customer_id`                    | B-tree            | Tìm địa chỉ theo khách hàng                 |
+| `uq_addresses_default_per_customer` | `addresses`   | `customer_id` WHERE `is_default` | UNIQUE (partial)  | Mỗi khách chỉ 1 địa chỉ mặc định            |
+| `idx_books_title`                   | `books`       | `title`                          | B-tree            | Tìm kiếm sách theo tiêu đề                  |
+| `idx_carts_customer_id`             | `carts`       | `customer_id`                    | B-tree            | Tìm giỏ hàng theo khách hàng                |
+| `idx_cart_items_cart_id`            | `cart_items`  | `cart_id`                        | B-tree            | Tìm mục theo giỏ hàng                       |
+| `idx_cart_items_book_id`            | `cart_items`  | `book_id`                        | B-tree            | Tìm giỏ hàng chứa sách cụ thể               |
+| `idx_orders_customer_created_at`    | `orders`      | `(customer_id, created_at DESC)` | B-tree (compound) | Lịch sử đơn hàng theo khách, mới nhất trước |
+| `idx_order_items_order_id`          | `order_items` | `order_id`                       | B-tree            | Tìm mục theo đơn hàng                       |

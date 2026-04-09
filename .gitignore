@@ -42,3 +42,9 @@ bin/
 
 ## Cache files
 .cache/
+
+## Node tooling
+node_modules/
+
+## Generated reports
+docs/report/middle/

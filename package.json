@@ -1,0 +1,19 @@
+{
+    "name": "bookstore-docs-tooling",
+    "private": true,
+    "scripts": {
+        "format:md": "prettier --write \"docs/**/*.md\"",
+        "lint:md": "markdownlint-cli2 --fix \"docs/**/*.md\"",
+        "lint:puml": "node scripts/lint-plantuml.mjs \"docs/**/*.md\"",
+        "lint": "npm run lint:md && npm run lint:puml",
+        "report:middle": "bash scripts/build-report-middle.sh"
+    },
+    "devDependencies": {
+        "glob": "^13.0.6",
+        "markdownlint-cli2": "^0.22.0",
+        "prettier": "^3.8.1",
+        "remark-parse": "^11.0.0",
+        "unified": "^11.0.5",
+        "unist-util-visit": "^5.1.0"
+    }
+}

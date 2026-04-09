@@ -1,1070 +1,472 @@
-# Bookstore — Architecture Documentation
-# Sách: Tài liệu Kiến trúc Bookstore
+# Purchase Bounded Context — Component Architecture
 
-> **Language / Ngôn ngữ**: Vietnamese + English (song ngữ)
-> **Diagram type / Loại diagram**: Standard PlantUML Component Diagram
-> **Last updated / Cập nhật lần cuối**: 2026-03-30
-
----
-
-## 1. Technology Stack / Công nghệ sử dụng
-
-| Layer / Tầng | Technology / Công nghệ | Version |
-|---|---|---|
-| Ngôn ngữ | Java | 21 |
-| Nền tảng | Jakarta EE | 10.0.0 |
-| Application Server | WildFly | 39.0.1 |
-| Database | PostgreSQL | 17-alpine |
-| Database Migration | Flyway | 11.10.5 |
-| Password Hashing | jBCrypt | 0.4 |
-| ORM | Jakarta Persistence (Hibernate) | — |
-| Dependency Injection | CDI (EJB @Stateless) | — |
-| Transaction | JTA | — |
-| Packaging | WAR (ROOT.war) | — |
-| Testing | JUnit Jupiter | 5.9.3 |
-| Build Tool | Gradle (Kotlin DSL) | — |
-| Container | Docker + Docker Compose | — |
-
----
-
-## 2. Architecture Overview / Tổng quan kiến trúc
-
-The application follows **Clean Architecture** (a.k.a. Hexagonal / Ports & Adapters) with **3 Bounded Contexts** and a **Shared Kernel**.
-
-Ứng dụng tuân theo **Clean Architecture** (còn gọi là Hexagonal / Ports & Adapters) với **3 Bounded Context** và một **Shared Kernel**.
-
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                    BOOKSTORE APPLICATION                             │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                      │
-│  ┌───────────────┐  ┌───────────────┐  ┌───────────────┐          │
-│  │  Auth Context  │  │  Book Context │  │ Purchase Ctx │          │
-│  │                │  │               │  │              │          │
-│  │ AuthAppService │  │ BookRepository│  │CartAppSvc    │          │
-│  │ LoginBean      │  │ Book          │  │CheckoutSvc    │          │
-│  │ RegisterBean   │  │ Isbn VO       │  │OrderQuerySvc │          │
-│  │ Customer       │  │ Title VO      │  │ Cart         │          │
-│  │ BCrypt         │  │ Author VO     │  │ Order        │          │
-│  └───────┬───────┘  └───────┬───────┘  └───────┬───────┘          │
-│          │                  │                  │                    │
-│          └──────────────────┼──────────────────┘                    │
-│                             ▼                                        │
-│                   ┌─────────────────┐                               │
-│                   │  Shared Kernel  │  ← All contexts depend on     │
-│                   │ CustomerId VO   │    shared value objects       │
-│                   │ Email VO        │    and validation utilities   │
-│                   │ Require/Exception│                                │
-│                   └────────┬────────┘                               │
-│                            ▼                                         │
-│                   ┌─────────────────┐                               │
-│                   │ Infrastructure  │                               │
-│                   │ JPA Repositories│                               │
-│                   │ Hibernate Entity│                               │
-│                   │ DemoMode Config │                               │
-│                   └────────┬────────┘                               │
-│                            │                                         │
-│          ┌─────────────────┴─────────────────┐                     │
-│          ▼                                   ▼                     │
-│  ┌───────────────────┐          ┌───────────────────┐            │
-│  │    WildFly 39     │          │   PostgreSQL 17    │            │
-│  │ CDI · JTA · JPA   │          │  Flyway migrations │            │
-│  └───────────────────┘          └───────────────────┘            │
-└─────────────────────────────────────────────────────────────────────┘
-```
-
----
-
-## 3. Bounded Context Map — Component Diagram / Sơ đồ Component
+## Component Diagram
 
 ```plantuml
-@startuml BoundedContextMap
-!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+@startuml
+title Purchase Bounded Context - Component Diagram
 
 skinparam component {
     BackgroundColor #FEFEFE
-    BorderColor #2C3E50
-    FontColor #2C3E50
-    ArrowColor #7F8C8D
-    ComponentStyle uml2
-    StereotypeFontColor #2C3E50
-    StereotypeFontSize 9
+    BorderColor #555555
+    FontColor #333333
+}
+skinparam package {
+    BackgroundColor #F5F5F5
+    BorderColor #888888
 }
 
-title Architecture Overview — Bounded Context Map\nBookstore Application
-
-' === EXTERNAL CLIENT ===
-actor "Người dùng / User" as user
-
-' === BOUNDED CONTEXTS ===
-package "auth" <<Bounded Context>> #E8F4FD {
-    component "AuthApplicationService" <<Service>> as auth_svc
-    component "LoginPageBean\nRegisterPageBean" <<Interface Layer>>
-    component "Customer\nAddress" <<Domain Model>>
-    component "CustomerRepository\nAddressRepository" <<Port>>
-}
-
-package "book" <<Bounded Context>> #E8F8E8 {
-    component "BookRepository" <<Port>>
-    component "Book" <<Domain Model>>
-    component "BookTitle\nIsbn\nAuthorName\nBookDescription\nImageUrl" <<Value Object>>
-}
-
-package "purchase" <<Bounded Context>> #FFF8E8 {
-    component "CartApplicationService\nCheckoutApplicationService\nOrderQueryApplicationService" <<Service>>
-    component "CartPageBean\nCheckoutPageBean\nOrderHistoryPageBean" <<Interface Layer>>
-    component "Cart\nOrder\nCartItem\nOrderItem" <<Domain Model>>
-    component "CartRepository\nOrderRepository" <<Port>>
-}
-
-' === SHARED KERNEL ===
-package "shared" <<Shared Kernel>> #F5E6FA {
-    component "CustomerId\nBookId\nOrderId\nCartId\nCartItemId\nOrderItemId" <<Identity VO>>
-    component "Email\nMoney\nPhoneNumber\nFullName\nAddressDetails..." <<Value Object>>
-    component "Require\nFieldValidationException" <<Validation>>
-    component "AuditableEntity" <<Base Entity>>
-}
-
-' === INFRASTRUCTURE ===
-package "Infrastructure" <<Layer>> #F0F0F0 {
-    component "CustomerJpaRepository\nBookJpaRepository\nCartJpaRepository\nOrderJpaRepository" <<JPA Adapter>>
-    component "CustomerEntity\nBookEntity\nCartEntity\nOrderEntity\nCartItemEntity\nOrderItemEntity\nAddressEntity" <<Hibernate Entity>>
-    component "CustomerEntityMapper\nBookEntityMapper\nCartEntityMapper\nOrderEntityMapper\nAddressEntityMapper" <<Entity Mapper>>
-    component "BCryptPasswordHasher" <<Security Adapter>>
-    component "DemoModeConfig" <<Configuration>>
-}
-
-' === EXTERNAL INFRASTRUCTURE ===
-node "WildFly 39" <<Application Server>> #ECF0F1 {
-    component "CDI Container" as cdi
-    component "JTA Transaction Manager" as jta
-    component "Jakarta Persistence" as jpa
-}
-
-database "PostgreSQL 17" <<Database Server>> #D4EDDA {
-    database "customers"
-    database "addresses"
-    database "books"
-    database "carts"
-    database "cart_items"
-    database "orders"
-    database "order_items"
-}
-
-' === RELATIONSHIPS ===
-
-' User → Interface Layer
-user --> LoginPageBean : "HTTP POST\n/login"
-user --> RegisterPageBean : "HTTP POST\n/register"
-user --> CartPageBean : "HTTP GET\n/account/cart"
-user --> CheckoutPageBean : "HTTP POST\n/account/checkout"
-user --> OrderHistoryPageBean : "HTTP GET\n/account/orders"
-
-' Interface → Service
-LoginPageBean --> auth_svc : "calls"
-RegisterPageBean --> auth_svc : "calls"
-CartPageBean --> CartApplicationService : "calls"
-CheckoutPageBean --> CheckoutApplicationService : "calls"
-OrderHistoryPageBean --> OrderQueryApplicationService : "calls"
-
-' Service → Domain Model
-auth_svc --> Customer : "uses"
-auth_svc --> CustomerRepository : "port/interface"
-CartApplicationService --> Cart : "uses"
-CartApplicationService --> CartRepository : "port/interface"
-CartApplicationService --> BookRepository : "port/interface"
-CheckoutApplicationService --> OrderRepository : "port/interface"
-OrderQueryApplicationService --> OrderRepository : "port/interface"
-
-' Book Context
-BookRepository --> Book : "manages"
-BookRepository --> BookId : "uses"
-
-' === SHARED KERNEL DEPENDENCIES ===
-Customer ..> Email : "value object"
-Customer ..> CustomerId : "value object"
-Book ..> BookId : "value object"
-Book ..> Money : "value object"
-Cart ..> CartId : "value object"
-Order ..> OrderId : "value object"
-Order ..> Money : "value object"
-
-auth_svc ..> Require : "validation"
-CartApplicationService ..> Require : "validation"
-CheckoutApplicationService ..> Require : "validation"
-
-' === INFRASTRUCTURE ===
-CustomerJpaRepository --> CustomerEntity : "persists"
-BookJpaRepository --> BookEntity : "persists"
-CartJpaRepository --> CartEntity : "persists"
-OrderJpaRepository --> OrderEntity : "persists"
-
-CustomerEntity ..> AuditableEntity : "extends"
-BookEntity ..> AuditableEntity : "extends"
-CartEntity ..> AuditableEntity : "extends"
-OrderEntity ..> AuditableEntity : "extends"
-
-BCryptPasswordHasher --> "password hashing"
-
-' === SERVER / DATABASE ===
-cdi --> AuthApplicationService : "injects"
-cdi --> CartApplicationService : "injects"
-cdi --> CheckoutApplicationService : "injects"
-cdi --> CustomerJpaRepository : "injects"
-cdi --> BookJpaRepository : "injects"
-
-jpa --> CustomerJpaRepository : "uses"
-jpa --> BookJpaRepository : "uses"
-jpa --> CartJpaRepository : "uses"
-jpa --> OrderJpaRepository : "uses"
-
-CustomerJpaRepository --> customers : "reads/writes"
-BookJpaRepository --> books : "reads/writes"
-CartJpaRepository --> carts : "reads/writes"
-CartJpaRepository --> cart_items : "reads/writes"
-OrderJpaRepository --> orders : "reads/writes"
-OrderJpaRepository --> order_items : "reads/writes"
-
-@enduml
-```
-<!-- docs/images/arch/arch-01.svg -->
-![BoundedContextMap](docs/images/arch/arch-01.svg)
-
-
-
-
-
-
-**Legend / Chú thích:**
-
-| Color / Màu | Bounded Context |
-|---|---|
-| 🔵 Light blue / Xanh nhạt | Auth Context |
-| 🟢 Light green / Xanh lục nhạt | Book Context |
-| 🟡 Light yellow / Vàng nhạt | Purchase Context |
-| 🟣 Light purple / Tím nhạt | Shared Kernel |
-| ⚪ Light gray / Xám nhạt | Infrastructure Layer |
-
----
-
-## 4. Auth Context — Chi tiết
-
-```plantuml
-@startuml AuthContext
-skinparam componentStyle uml2
-skinparam defaultTextAlignment center
-skinparam wrapWidth 200
-
-title Auth Context — Package Structure & Dependency Flow\nXác thực & Quản lý Khách hàng
-
-' --- LAYERS ---
-
-package "auth.interfaces.web" <<Interface Layer>> #FFE4B5 {
-    component "LoginPageBean" <<Controller>>
-    component "RegisterPageBean" <<Controller>>
-    component "LogoutPageBean" <<Controller>>
-    component "AuthSession" <<Session Facade>>
-    component "AuthGuardBean" <<Security Guard>>
-    component "AuthPaths" <<Path Constants>>
-    component "HtmlEscaper" <<Utility>>
-}
-
-package "auth.application" <<Application Layer>> #ADD8E6 {
-    component "AuthApplicationService" <<Service>> as auth_svc
-    component "PasswordHasher" <<Port (Interface)>>
-    component "BCryptPasswordHasher" <<Adapter>>
-    component "LoginResult\nRegisterResult" <<Result DTO>>
-    component "DemoModeSettings" <<Config>>
-}
-
-package "auth.domain" <<Domain Layer>> #90EE90 {
-    component "Customer" <<Entity>>
-    component "Address" <<Entity>>
-    component "CustomerStatus" <<Value Object>>
-    component "CustomerRepository" <<Port>>
-    component "AddressRepository" <<Port>>
-}
-
-package "auth.infrastructure" <<Infrastructure Layer>> #D3D3D3 {
-    component "CustomerJpaRepository" <<Adapter>>
-    component "AddressJpaRepository" <<Adapter>>
-    component "CustomerEntity" <<Hibernate>>
-    component "AddressEntity" <<Hibernate>>
-    component "CustomerEntityMapper" <<Mapper>>
-    component "AddressEntityMapper" <<Mapper>>
-    component "DemoModeConfig" <<Config>>
-}
-
-package "shared" <<Shared Kernel>> #E6E6FA {
-    component "Email\nPasswordHash\nPhoneNumber\nFullName\nCustomerId\nAddressId\nAddressDetails..." <<VO>>
-    component "Require\nFieldValidationException" <<Validation>>
-    component "AuditableEntity" <<Base>>
-}
-
-' --- RELATIONSHIPS ---
-
-' Interfaces → Application
-LoginPageBean --> auth_svc : "login()"
-RegisterPageBean --> auth_svc : "register()"
-LogoutPageBean --> AuthSession : "invalidate()"
-AuthGuardBean --> AuthSession : "check session"
-
-' Application → Domain
-auth_svc --> Customer : "creates/validates"
-auth_svc --> CustomerRepository : "port"
-auth_svc --> PasswordHasher : "port"
-auth_svc --> CustomerStatus : "status check"
-auth_svc ..> Require : "validates input"
-auth_svc ..> Email : "normalizes email"
-auth_svc ..> CustomerId : "generates identity"
-
-' Domain → Shared Kernel
-Customer --> Email : "field"
-Customer --> PasswordHash : "field"
-Customer --> CustomerId : "field"
-Customer --> CustomerStatus : "field"
-Address --> AddressId : "field"
-Address ..> AddressDetails : "uses"
-
-' Application → Infrastructure
-BCryptPasswordHasher --> PasswordHasher : "implements"
-CustomerJpaRepository --> CustomerRepository : "implements"
-AddressJpaRepository --> AddressRepository : "implements"
-
-' Infrastructure → Entity/Mapper
-CustomerJpaRepository --> CustomerEntity : "manages"
-AddressJpaRepository --> AddressEntity : "manages"
-CustomerEntityMapper --> Customer : "maps to domain"
-CustomerEntityMapper --> CustomerEntity : "maps from entity"
-AddressEntityMapper --> Address : "maps to domain"
-AddressEntityMapper --> AddressEntity : "maps from entity"
-
-' Entity → Shared Kernel
-CustomerEntity --> AuditableEntity : "extends"
-AddressEntity --> AuditableEntity : "extends"
-
-' DemoMode
-DemoModeConfig --> DemoModeSettings : "provides demo account"
-DemoModeSettings --> Email : "default email"
-DemoModeSettings --> PasswordHash : "default hash"
-
-@enduml
-```
-<!-- docs/images/arch/arch-02.svg -->
-![AuthContext](docs/images/arch/arch-02.svg)
-
-
-
-
-
-
-### 4.1 Auth — User Registration Flow
-
-```
-┌─────────┐    POST /auth/register     ┌──────────────────┐
-│  User   │ ─────────────────────────▶ │ RegisterPageBean │
-└─────────┘                            └────────┬─────────┘
-                                                │ validate()
-                                                ▼
-                                       ┌──────────────────┐
-                                       │AuthApplicationSvc │
-                                       └────────┬─────────┘
-                                                │ 1. check email exists
-                                                ▼
-                                       ┌──────────────────┐
-                                       │CustomerRepository│
-                                       │  (CustomerJpa)  │
-                                       └────────┬─────────┘
-                                                │ 2. hash password
-                                                ▼
-                                       ┌──────────────────┐
-                                       │BCryptPassword    │
-                                       │Hasher            │
-                                       └────────┬─────────┘
-                                                │ 3. save customer
-                                                ▼
-                                       ┌──────────────────┐
-                                       │CustomerRepository│
-                                       │  (CustomerJpa)  │
-                                       └────────┬─────────┘
-                                                │ 4. create result
-                                                ▼
-                                       ┌──────────────────┐
-                                       │ RegisterResult   │
-                                       └────────┬─────────┘
-                                                │ redirect
-                                                ▼
-                                       ┌──────────────────┐
-                                       │ login.jsp        │
-                                       └──────────────────┘
-```
-
----
-
-## 5. Book Context — Chi tiết
-
-```plantuml
-@startuml BookContext
-skinparam componentStyle uml2
-skinparam defaultTextAlignment center
-
-title Book Context — Catalog Management\nQuản lý Danh mục Sách
-
-package "book.domain" <<Domain Layer>> #90EE90 {
-    component "Book" <<Aggregate Root>>
-    component "BookRepository" <<Port>>
-    component "BookTitle" <<Value Object>>
-    component "AuthorName" <<Value Object>>
-    component "Isbn" <<Value Object>>
-    component "BookDescription" <<Value Object>>
-    component "ImageUrl" <<Value Object>>
-}
-
-package "book.infrastructure" <<Infrastructure Layer>> #D3D3D3 {
-    component "BookJpaRepository" <<Adapter>>
-    component "BookEntity" <<Hibernate>>
-    component "BookEntityMapper" <<Mapper>>
-}
-
-package "shared" <<Shared Kernel>> #E6E6FA {
-    component "BookId\nQuantity" <<Identity VO>>
-    component "Money" <<Value Object>>
-    component "Require\nFieldValidationException" <<Validation>>
-    component "AuditableEntity" <<Base>>
-}
-
-package "purchase" <<Purchase Context>> #FFF8E8 {
-    component "CartApplicationService" <<Service>>
-    component "AccountCatalogApplicationService" <<Service>>
-}
-
-' Relationships
-Book --> BookTitle : "field"
-Book --> AuthorName : "field"
-Book --> Isbn : "field"
-Book --> BookDescription : "field"
-Book --> ImageUrl : "field"
-Book --> Money : "price"
-Book --> BookId : "identity"
-Book --> Quantity : "stockQuantity"
-
-BookJpaRepository --> BookRepository : "implements"
-BookEntityMapper --> Book : "maps to domain"
-BookEntityMapper --> BookEntity : "maps from entity"
-BookJpaRepository --> BookEntity : "manages"
-BookEntity --> AuditableEntity : "extends"
-
-CartApplicationService --> BookRepository : "port"
-CartApplicationService --> Book : "checks availability"
-CartApplicationService ..> Require : "validates"
-
-AccountCatalogApplicationService --> BookRepository : "port"
-AccountCatalogApplicationService ..> BookId : "uses"
-AccountCatalogApplicationService ..> Money : "uses"
-
-@enduml
-```
-<!-- docs/images/arch/arch-03.svg -->
-![BookContext](docs/images/arch/arch-03.svg)
-
-
-
-
-
-
----
-
-## 6. Purchase Context — Chi tiết
-
-```plantuml
-@startuml PurchaseContext
-skinparam componentStyle uml2
-skinparam defaultTextAlignment center
-
-title Purchase Context — Cart, Checkout & Orders\nGiỏ hàng, Thanh toán & Đơn hàng
-
-package "purchase.interfaces.web" <<Interface Layer>> #FFE4B5 {
-    component "CartPageBean" <<Controller>>
-    component "CheckoutPageBean" <<Controller>>
-    component "OrderHistoryPageBean" <<Controller>>
-    component "OrderDetailPageBean" <<Controller>>
-    component "CartPageModel\nCheckoutPageModel\nOrderHistoryPageModel..." <<Page Model>>
-    component "AddressFormData" <<Form DTO>>
-    component "PurchasePaths" <<Path Constants>>
-}
-
-package "purchase.application" <<Application Layer>> #ADD8E6 {
-    component "CartApplicationService" <<Service>> as cart_svc
-    component "CheckoutApplicationService" <<Service>> as checkout_svc
-    component "OrderQueryApplicationService" <<Service>> as order_q_svc
-    component "AccountCatalogApplicationService" <<Service>>
-    component "CartViewAssembler" <<Assembler>>
-    component "CartView\nCheckoutView\nOrderSummaryView\nOrderDetailView..." <<View DTO>>
-    component "CartActionResult\nCheckoutResult\nOrderLookupResult" <<Result DTO>>
-}
-
-package "purchase.domain" <<Domain Layer>> #90EE90 {
-    component "Cart" <<Aggregate Root>>
-    component "CartItem" <<Entity>>
-    component "Order" <<Aggregate Root>>
-    component "OrderItem" <<Entity>>
-    component "OrderStatus" <<Value Object>>
-    component "CartRepository" <<Port>>
-    component "OrderRepository" <<Port>>
-}
-
-package "purchase.infrastructure" <<Infrastructure Layer>> #D3D3D3 {
-    component "CartJpaRepository" <<Adapter>>
-    component "OrderJpaRepository" <<Adapter>>
-    component "CartEntity" <<Hibernate>>
-    component "OrderEntity" <<Hibernate>>
-    component "CartItemEntity" <<Hibernate>>
-    component "OrderItemEntity" <<Hibernate>>
-    component "CartEntityMapper" <<Mapper>>
-    component "OrderEntityMapper" <<Mapper>>
-}
-
-package "shared" <<Shared Kernel>> #E6E6FA {
-    component "CartId\nOrderId\nCartItemId\nOrderItemId\nBookId\nCustomerId\nMoney\nQuantity..." <<VO>>
-    component "AddressDetails\nRecipientName\nPhoneNumber..." <<Address VO>>
-    component "Require\nFieldValidationException" <<Validation>>
-    component "AuditableEntity" <<Base>>
-}
-
-package "book" <<Book Context>> #E8F8E8 {
-    component "Book" <<Domain Model>>
-    component "BookRepository" <<Port>>
-}
-
-' --- RELATIONSHIPS ---
-
-' Interface → Application
-CartPageBean --> cart_svc : "getCart()\naddBook()\nupdateQuantity()\nremoveBook()"
-CheckoutPageBean --> checkout_svc : "placeOrder()\ngetCheckoutView()"
-OrderHistoryPageBean --> order_q_svc : "getOrders()"
-OrderDetailPageBean --> order_q_svc : "getOrderDetail()"
-CartPageBean --> AccountCatalogApplicationService : "getCatalogBooks()"
-
-' Application → Domain
-cart_svc --> Cart : "creates/updates"
-cart_svc --> CartItem : "creates/updates"
-cart_svc --> CartRepository : "port"
-cart_svc ..> Require : "validates"
-cart_svc ..> BookId : "uses"
-cart_svc ..> Quantity : "uses"
-
-checkout_svc --> Order : "creates"
-checkout_svc --> Cart : "reads cart"
-checkout_svc --> CartRepository : "port"
-checkout_svc --> OrderRepository : "port"
-checkout_svc ..> Require : "validates"
-checkout_svc ..> AddressDetails : "shipping address"
-checkout_svc ..> Money : "calculates total"
-
-order_q_svc --> Order : "queries"
-order_q_svc --> OrderRepository : "port"
-order_q_svc ..> OrderId : "uses"
-order_q_svc ..> CustomerId : "filters by customer"
-
-' Domain → Shared Kernel
-Cart --> CartId : "identity"
-Cart --> CustomerId : "owner"
-CartItem --> CartItemId : "identity"
-CartItem --> BookId : "book reference"
-CartItem --> Money : "unit price snapshot"
-Order --> OrderId : "identity"
-Order --> CustomerId : "customer"
-Order --> Money : "totalAmount"
-Order --> OrderStatus : "status"
-OrderItem --> OrderItemId : "identity"
-OrderItem --> Money : "line total"
-
-' Application → Book Context
-cart_svc --> BookRepository : "port"
-cart_svc --> Book : "validates stock"
-AccountCatalogApplicationService --> BookRepository : "port"
-AccountCatalogApplicationService --> Book : "returns catalog"
-
-' Infrastructure
-CartJpaRepository --> CartRepository : "implements"
-OrderJpaRepository --> OrderRepository : "implements"
-CartEntityMapper --> Cart : "maps to domain"
-CartEntityMapper --> CartEntity : "maps from entity"
-OrderEntityMapper --> Order : "maps to domain"
-OrderEntityMapper --> OrderEntity : "maps from entity"
-
-CartJpaRepository --> CartEntity : "manages"
-CartJpaRepository --> CartItemEntity : "manages"
-OrderJpaRepository --> OrderEntity : "manages"
-OrderJpaRepository --> OrderItemEntity : "manages"
-
-CartEntity --> AuditableEntity : "extends"
-OrderEntity --> AuditableEntity : "extends"
-
-@enduml
-```
-<!-- docs/images/arch/arch-04.svg -->
-![PurchaseContext](docs/images/arch/arch-04.svg)
-
-
-
-
-
-
-### 6.1 Purchase — Checkout Flow (Sequence Diagram)
-
-```plantuml
-@startuml CheckoutFlow
-participant "User" as u
-participant "CheckoutPageBean" as cb
-participant "CheckoutApplicationService" as svc
-participant "CartRepository" as cart_repo
-participant "OrderRepository" as order_repo
-participant "BookRepository" as book_repo
-participant "PostgreSQL" as db
-
-title Checkout Flow — Trình tự Thanh toán\nCustomer adds items → Views cart → Places order → Order saved
-
-u -> cb : POST /account/checkout (address data)
-activate cb
-
-cb -> svc : placeOrder(customerId, addressInput)
-activate svc
-
-svc -> cart_repo : findByCustomerId(customerId)
-activate cart_repo
-cart_repo -> db : SELECT * FROM carts WHERE customer_id = ?
-db --> cart_repo : CartEntity + CartItemEntities
-cart_repo --> svc : Cart
-deactivate cart_repo
-
-alt cart is empty
-    svc --> cb : CheckoutResult.failure("Gio hang trong.")
-end
-
-loop for each CartItem
-    svc -> book_repo : findById(bookId)
-    activate book_repo
-    book_repo -> db : SELECT * FROM books WHERE id = ?
-    db --> book_repo : BookEntity
-    book_repo --> svc : Book
-    deactivate book_repo
-
-    alt book inactive or out of stock
-        svc --> cb : CheckoutResult.failure("Sach khong kha dung.")
-    end
-end
-
-svc -> svc : calculateTotal(items) → Money
-svc -> order_repo : save(Order)
-activate order_repo
-order_repo -> db : INSERT INTO orders (...)
-db --> order_repo : OrderEntity (with generated ID)
-deactivate order_repo
-
-loop for each CartItem
-    svc -> db : INSERT INTO order_items (...)
-end
-
-svc -> cart_repo : save(Cart with empty items)
-activate cart_repo
-cart_repo -> db : UPDATE carts SET items = [] ...
-deactivate cart_repo
-
-svc --> cb : CheckoutResult.success(orderId)
-deactivate svc
-
-cb -> cb : redirect to /account/order-detail.jsp?id={orderId}
-deactivate cb
-
-@enduml
-```
-<!-- docs/images/arch/arch-05.svg -->
-![CheckoutFlow](docs/images/arch/arch-05.svg)
-
-
-
-
-
-
----
-
-## 7. Shared Kernel — Chi tiết
-
-```plantuml
-@startuml SharedKernel
-skinparam componentStyle uml2
-skinparam defaultTextAlignment center
-
-title Shared Kernel — Common Primitives\nCác đối tượng giá trị dùng chung
-
-package "shared.domain.valueobject" <<Package>> #F5E6FA {
-    component "Identity Value Objects" <<Identity>> #FFFACD {
-        component "CustomerId" <<>>
-        component "BookId" <<>>
-        component "OrderId" <<>>
-        component "CartId" <<>>
-        component "CartItemId" <<>>
-        component "OrderItemId" <<>>
-        component "AddressId" <<>>
+' ══════════════════════════════════════════════════════════════
+'  PURCHASE BOUNDED CONTEXT
+' ══════════════════════════════════════════════════════════════
+
+package "purchase" {
+
+    package "interfaces/web" as interfaces_web {
+        component [CartPage\nCartPageBean] as cartPage
+        component [CheckoutPage\nCheckoutPageBean] as checkoutPage
+        component [AccountHomePage\nAccountHomePageBean] as accountHomePage
+        component [OrderHistoryPage\nOrderHistoryPageBean] as orderHistoryPage
+        component [OrderDetailPage\nOrderDetailPageBean] as orderDetailPage
     }
 
-    component "Person & Contact VO" <<Person>> #E0F7FA {
-        component "Email" <<>>
-        component "PhoneNumber" <<>>
-        component "FullName" <<>>
-        component "RecipientName" <<>>
+    package "application/service" as app_service {
+        component [CartApplicationService] as cartAppSvc
+        component [CheckoutApplicationService] as checkoutAppSvc
+        component [AccountCatalogApplicationService] as catalogAppSvc
+        component [OrderQueryApplicationService] as orderQuerySvc
+        component [CartViewAssembler] as cartAssembler
     }
 
-    component "Address VO" <<Address>> #FCE4EC {
-        component "AddressLine" <<>>
-        component "Ward\nDistrict\nProvince\nPostalCode\nCity" <<>>
-        component "AddressDetails" <<Composition>>
+    package "domain/model" as domain_model {
+        component [Cart\nCartItem] as cartModel
+        component [Order\nOrderItem] as orderModel
     }
 
-    component "Money & Quantity" <<Numeric>> #E8F5E9 {
-        component "Money" <<>>
-        component "Quantity" <<>>
+    package "domain/repository" as domain_repo {
+        component [<<interface>>\nCartRepository] as cartRepo
+        component [<<interface>>\nOrderRepository] as orderRepo
     }
 
-    component "Password" <<Security>> #FFF3E0 {
-        component "PasswordHash" <<>>
+    package "domain/valueobject" as domain_vo {
+        component [OrderStatus] as orderStatus
+    }
+
+    package "infrastructure/persistence" as infra {
+        component [CartJpaRepository] as cartJpaRepo
+        component [OrderJpaRepository] as orderJpaRepo
+        component [CartEntityMapper\nOrderEntityMapper] as mappers
+        component [CartEntity\nCartItemEntity\nOrderEntity\nOrderItemEntity] as entities
     }
 }
 
-package "shared.domain.validation" <<Validation>> #FFEBEE {
-    component "Require" <<Validation Utils>>
-    component "FieldValidationException" <<Exception>>
+' ══════════════════════════════════════════════════════════════
+'  EXTERNAL BOUNDED CONTEXTS
+' ══════════════════════════════════════════════════════════════
+
+package "book" as book_bc #E8F5E9 {
+    component [BookRepository] as bookRepo
+    component [BookTitle, Isbn] as bookVo
+    component [BookEntity] as bookEntity
 }
 
-package "shared.infrastructure" <<Infra>> #F5F5F5 {
-    component "AuditableEntity" <<Base Entity>>
+package "auth" as auth_bc #E3F2FD {
+    component [AddressRepository] as addressRepo
+    component [CustomerEntity] as customerEntity
 }
 
-' AuditableEntity provides timestamp fields for all entities
-AuditableEntity -[hidden]right- "Identity Value Objects"
+package "shared" as shared_bc #FFF3E0 {
+    component [Value Objects\n(CartId, OrderId, BookId,\nCustomerId, Money, ...)] as sharedVo
+    component [Validation\n(Require, FieldValidation...)] as sharedValidation
+    component [AuditableEntity] as auditableEntity
+}
 
-note bottom of Require
-  Provides: notNull(), notBlank(),
-  positive(), nonNegative(),
-  Validates domain invariants at construction.
-end note
+' ══════════════════════════════════════════════════════════════
+'  INTERFACES -> APPLICATION
+' ══════════════════════════════════════════════════════════════
 
-note bottom of AuditableEntity
-  Fields: version (optimistic lock),
-  createdAt, updatedAt (TIMESTAMPTZ)
-  Used by all JPA entities as @MappedSuperclass.
-end note
+cartPage --> cartAppSvc
+checkoutPage --> checkoutAppSvc
+accountHomePage --> catalogAppSvc
+orderHistoryPage --> orderQuerySvc
+orderDetailPage --> orderQuerySvc
 
-note bottom of Money
-  Backed by BigDecimal.
-  Immutable record.
-end note
+' ══════════════════════════════════════════════════════════════
+'  APPLICATION -> DOMAIN
+' ══════════════════════════════════════════════════════════════
 
-note bottom of AddressDetails
-  Composition of all address fields:
-  line1, line2, ward, district,
-  city, province, postalCode.
-  Used in both Address (auth) and Order (purchase).
-end note
+cartAppSvc --> cartRepo
+cartAppSvc --> cartModel
+checkoutAppSvc --> cartRepo
+checkoutAppSvc --> orderRepo
+checkoutAppSvc --> cartModel
+checkoutAppSvc --> orderModel
+catalogAppSvc ..> cartAppSvc : delegates
+orderQuerySvc --> orderRepo
+cartAssembler --> cartModel
+
+' ══════════════════════════════════════════════════════════════
+'  DOMAIN MODEL -> DOMAIN VALUE OBJECT
+' ══════════════════════════════════════════════════════════════
+
+orderModel --> orderStatus
+
+' ══════════════════════════════════════════════════════════════
+'  INFRASTRUCTURE IMPLEMENTS DOMAIN
+' ══════════════════════════════════════════════════════════════
+
+cartJpaRepo ..|> cartRepo : implements
+orderJpaRepo ..|> orderRepo : implements
+cartJpaRepo --> mappers
+orderJpaRepo --> mappers
+mappers --> entities
+mappers --> cartModel
+mappers --> orderModel
+
+' ══════════════════════════════════════════════════════════════
+'  CROSS-BOUNDED-CONTEXT DEPENDENCIES
+' ══════════════════════════════════════════════════════════════
+
+cartAppSvc --> bookRepo : <<cross-BC>>
+checkoutAppSvc --> bookRepo : <<cross-BC>>
+checkoutAppSvc --> addressRepo : <<cross-BC>>
+catalogAppSvc --> bookRepo : <<cross-BC>>
+cartAssembler --> bookRepo : <<cross-BC>>
+
+orderModel ..> bookVo : <<cross-BC>>
+
+mappers --> bookEntity : <<cross-BC>>
+entities --> customerEntity : <<cross-BC>>
+entities --> auditableEntity : extends
+
+' ══════════════════════════════════════════════════════════════
+'  SHARED KERNEL
+' ══════════════════════════════════════════════════════════════
+
+domain_model --> sharedVo
+domain_repo --> sharedVo
+domain_model --> sharedValidation
+app_service --> sharedVo
+infra --> sharedVo
 
 @enduml
 ```
-<!-- docs/images/arch/arch-06.svg -->
-![SharedKernel](docs/images/arch/arch-06.svg)
 
+## Mô tả các layer
 
+### 1. Interfaces Layer (`interfaces/web`)
 
+Layer ngoài cùng, tiếp nhận request từ bên ngoài (JSP/Servlet) và trả về
+response. Mỗi use case tương ứng với một cặp interface/bean:
 
+| Interface (`@Remote`) | Bean (`@Stateless`)    | Chức năng                                                      |
+| --------------------- | ---------------------- | -------------------------------------------------------------- |
+| `AccountHomePage`     | `AccountHomePageBean`  | Trang chủ tài khoản — hiển thị catalog sách, thêm sách vào giỏ |
+| `CartPage`            | `CartPageBean`         | Quản lý giỏ hàng — xem, cập nhật số lượng, xoá sách            |
+| `CheckoutPage`        | `CheckoutPageBean`     | Thanh toán — xem checkout, đặt hàng                            |
+| `OrderHistoryPage`    | `OrderHistoryPageBean` | Lịch sử đơn hàng — danh sách đơn hàng có phân trang            |
+| `OrderDetailPage`     | `OrderDetailPageBean`  | Chi tiết đơn hàng — xem thông tin 1 đơn hàng cụ thể            |
 
+Mỗi bean xử lý:
 
----
+- Phân biệt GET/POST (thông qua `request.method()`)
+- Parse và validate input từ request
+- Gọi xuống application service
+- Tạo PageModel và trả về PageResult (chứa `PageAction.RENDER` hoặc
+  `PageAction.REDIRECT`)
 
-## 8. Infrastructure Layer — Chi tiết
+Ngoài ra layer này còn chứa:
+
+- `PurchasePaths` — hằng số đường dẫn JSP (`/account/cart.jsp`,
+  `/account/checkout.jsp`, ...)
+- `AddressFormData` — DTO chứa dữ liệu form địa chỉ giao hàng
+- Các record `*PageRequest`, `*PageResult`, `*PageModel` — request/response
+  object cho từng trang
+
+### 2. Application Layer (`application/service`)
+
+Layer điều phối logic nghiệp vụ, không chứa business rule mà phối hợp các domain
+object và repository:
+
+| Service                            | Chức năng                                                                                | Dependency                                                                                       |
+| ---------------------------------- | ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `CartApplicationService`           | Thêm sách, cập nhật số lượng, xoá sách trong giỏ hàng                                    | `CartRepository`, `BookRepository` (cross-BC)                                                    |
+| `CheckoutApplicationService`       | Tạo đơn hàng từ giỏ hàng, xử lý địa chỉ giao hàng, trừ tồn kho                           | `CartRepository`, `OrderRepository`, `BookRepository` (cross-BC), `AddressRepository` (cross-BC) |
+| `AccountCatalogApplicationService` | Lấy danh sách sách đang bán, delegate thêm vào giỏ                                       | `BookRepository` (cross-BC), `CartApplicationService`                                            |
+| `OrderQueryApplicationService`     | Truy vấn lịch sử đơn hàng, xem chi tiết đơn hàng                                         | `OrderRepository`                                                                                |
+| `CartViewAssembler`                | Chuyển đổi `Cart` domain model sang `CartView` DTO, làm giàu dữ liệu từ `BookRepository` | `BookRepository` (cross-BC)                                                                      |
+
+Layer này còn chứa các DTO/View:
+
+- `CartView`, `CartLineView` — hiển thị giỏ hàng
+- `CheckoutView`, `CheckoutAddressInput` — dữ liệu checkout
+- `CatalogBookView` — hiển thị sách trong catalog
+- `OrderSummaryView`, `OrderDetailView`, `OrderAddressView`,
+  `OrderItemDetailView` — hiển thị đơn hàng
+- `CartActionResult`, `CheckoutResult`, `OrderLookupResult` — kết quả thao tác
+
+### 3. Domain Layer (`domain`)
+
+Lõi của bounded context, chứa domain model, repository interface và value
+object:
+
+**domain/model:**
+
+- `Cart` — giỏ hàng của khách hàng, chứa danh sách `CartItem`. Immutable record
+  với validation qua `Require`.
+- `CartItem` — một dòng trong giỏ hàng: `bookId`, `quantity`,
+  `unitPriceSnapshot`.
+- `Order` — đơn hàng đã đặt: `customerId`, `status`, `totalAmount`,
+  `shippingAddress`, danh sách `OrderItem`.
+- `OrderItem` — một dòng trong đơn hàng: `bookId`, `bookTitleSnapshot`,
+  `bookIsbnSnapshot`, `unitPriceSnapshot`, `quantity`, `lineTotal`. Lưu ý
+  OrderItem snapshot thông tin sách tại thời điểm đặt hàng (title, ISBN, giá) để
+  đảm bảo dữ liệu lịch sử không bị ảnh hưởng khi sách thay đổi.
+
+**domain/repository:**
+
+- `CartRepository` (interface) — `findById`, `findByCustomerId`, `save`
+- `OrderRepository` (interface) — `findById`, `findByCustomerIdAndId`,
+  `findByCustomerId`, `save`
+
+**domain/valueobject:**
+
+- `OrderStatus` — enum với 3 trạng thái: `PENDING`, `PLACED`, `CANCELLED`
+
+Domain layer phụ thuộc vào `shared` kernel cho các value object dùng chung
+(`CartId`, `OrderId`, `BookId`, `CustomerId`, `Money`, `Quantity`,
+`AddressDetails`, ...) và validation utilities (`Require`,
+`FieldValidationException`). Domain model `OrderItem` cũng phụ thuộc vào `book`
+bounded context cho `BookTitle` và `Isbn` — đây là cross-BC dependency ở tầng
+domain.
+
+### 4. Infrastructure Layer (`infrastructure/persistence`)
+
+Implement các repository interface của domain bằng JPA/Jakarta Persistence:
+
+**infrastructure/persistence/repository:**
+
+- `CartJpaRepository` — implement `CartRepository`, sử dụng `EntityManager` với
+  JPQL query
+- `OrderJpaRepository` — implement `OrderRepository`, sử dụng `EntityManager`
+  với JPQL query
+
+**infrastructure/persistence/entity:**
+
+- `CartEntity`, `CartItemEntity` — JPA entity cho bảng `carts` và `cart_items`
+- `OrderEntity`, `OrderItemEntity` — JPA entity cho bảng `orders` và
+  `order_items`
+- Tất cả entity kế thừa `AuditableEntity` từ shared (cung cấp `version`,
+  `createdAt`, `updatedAt`)
+
+**infrastructure/persistence/mapper:**
+
+- `CartEntityMapper` — chuyển đổi hai chiều giữa `Cart` (domain) và `CartEntity`
+  (JPA)
+- `OrderEntityMapper` — chuyển đổi hai chiều giữa `Order` (domain) và
+  `OrderEntity` (JPA)
+
+Infrastructure layer phụ thuộc cross-BC vào:
+
+- `auth.infrastructure.persistence.entity.CustomerEntity` — `CartEntity` và
+  `OrderEntity` tham chiếu đến `CustomerEntity` qua JPA relationship
+  (`@OneToOne`, `@ManyToOne`)
+- `book.infrastructure.persistence.entity.BookEntity` — các mapper tham chiếu
+  `BookEntity` để thiết lập foreign key cho `CartItemEntity` và
+  `OrderItemEntity`
+
+## Cross-Bounded-Context Dependencies
+
+Purchase bounded context phụ thuộc vào 3 bounded context khác:
+
+### book (Bounded Context)
+
+| Layer trong Purchase                | Phụ thuộc vào                                       | Mục đích                                                                                        |
+| ----------------------------------- | --------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `application/service`               | `book.domain.repository.BookRepository`             | Truy vấn thông tin sách (giá, tồn kho, trạng thái) khi thêm vào giỏ, checkout, hiển thị catalog |
+| `domain/model`                      | `book.domain.valueobject.BookTitle`, `Isbn`         | `OrderItem` lưu snapshot tiêu đề và ISBN sách tại thời điểm đặt hàng                            |
+| `infrastructure/persistence/mapper` | `book.infrastructure.persistence.entity.BookEntity` | Mapper cần `BookEntity` để thiết lập foreign key khi chuyển domain model sang JPA entity        |
+
+### auth (Bounded Context)
+
+| Layer trong Purchase                | Phụ thuộc vào                                           | Mục đích                                                                           |
+| ----------------------------------- | ------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| `application/service`               | `auth.domain.repository.AddressRepository`              | `CheckoutApplicationService` truy vấn địa chỉ mặc định của khách hàng khi checkout |
+| `infrastructure/persistence/entity` | `auth.infrastructure.persistence.entity.CustomerEntity` | `CartEntity` và `OrderEntity` tham chiếu `CustomerEntity` qua JPA relationship     |
+
+### shared (Shared Kernel)
+
+| Layer trong Purchase                | Phụ thuộc vào                                                  | Mục đích                                                                                                          |
+| ----------------------------------- | -------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `domain/model`, `domain/repository` | `shared.domain.valueobject.*`                                  | Value objects dùng chung: `CartId`, `OrderId`, `BookId`, `CustomerId`, `Money`, `Quantity`, `AddressDetails`, ... |
+| `domain/model`                      | `shared.domain.validation.Require`, `FieldValidationException` | Validation utilities cho domain model                                                                             |
+| `application/service`               | `shared.domain.valueobject.*`                                  | Application service sử dụng các value object làm tham số và kết quả                                               |
+| `infrastructure/persistence/entity` | `shared.infrastructure.persistence.entity.AuditableEntity`     | Base entity cung cấp `version`, `createdAt`, `updatedAt` với `@Version` và auditing                               |
+
+## Enterprise JavaBeans (EJB) trong Purchase Context
+
+Purchase bounded context sử dụng Jakarta EJB (Enterprise JavaBeans) làm
+framework quản lý lifecycle, transaction và dependency injection cho các
+component. Dưới đây là cách EJB được áp dụng trong từng layer:
+
+### @Stateless (Stateless Session Bean)
+
+Tất cả các bean trong purchase context đều là **Stateless Session Bean** — không
+lưu trạng thái giữa các lần gọi method. EJB container quản lý pool các instance
+và tái sử dụng chúng giữa các request.
+
+**Các class sử dụng `@Stateless`:**
+
+| Layer                      | Class                                                                                                                      |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| interfaces/web             | `CartPageBean`, `CheckoutPageBean`, `AccountHomePageBean`, `OrderHistoryPageBean`, `OrderDetailPageBean`                   |
+| application/service        | `CartApplicationService`, `CheckoutApplicationService`, `AccountCatalogApplicationService`, `OrderQueryApplicationService` |
+| infrastructure/persistence | `CartJpaRepository`, `OrderJpaRepository`                                                                                  |
+
+**Lý do chọn `@Stateless`:**
+
+- Mỗi request xử lý độc lập, không cần lưu state giữa các request
+- EJB container tự động quản lý transaction boundary — mỗi method call được bọc
+  trong một JTA transaction (Container-Managed Transaction — CMT). Nếu method
+  throw exception, transaction tự động rollback
+- EJB container quản lý pool instance, cho phép xử lý nhiều request đồng thời mà
+  không cần developer tự quản lý thread safety
+- Cho phép sử dụng `@Inject` để inject dependency thông qua CDI (Contexts and
+  Dependency Injection)
+
+### @Remote (Remote Interface)
+
+Các interface trong `interfaces/web` sử dụng `@Remote` để expose EJB qua remote
+protocol. Điều này cho phép:
+
+- JSP/Servlet (deploy trong WAR riêng) gọi EJB thông qua JNDI lookup
+- Tách biệt rõ ràng giữa web tier (presentation) và business tier (EJB)
+- Khả năng deploy web tier và business tier trên các JVM/server khác nhau (nếu
+  cần)
+
+**Các interface sử dụng `@Remote`:**
+
+- `CartPage`, `CheckoutPage`, `AccountHomePage`, `OrderHistoryPage`,
+  `OrderDetailPage`
+
+Mỗi interface định nghĩa một method `handle(XxxPageRequest): XxxPageResult` —
+pattern thống nhất cho tất cả các trang, nhận request object và trả về result
+object.
+
+### @Inject (CDI Dependency Injection)
+
+EJB kết hợp với CDI (Contexts and Dependency Injection) thông qua `@Inject` trên
+constructor:
 
 ```plantuml
-@startuml Infrastructure
-skinparam componentStyle uml2
-skinparam defaultTextAlignment center
+@startuml
+title CDI Dependency Injection Flow
 
-title Infrastructure Layer — Persistence Adapters\nTầng Infrastructure — Các Adapter lưu trữ
-
-package "auth.infrastructure" <<Auth>> #E8F4FD {
-    component "CustomerJpaRepository" as cust_jpa
-    component "AddressJpaRepository" as addr_jpa
-    component "CustomerEntity" as cust_ent
-    component "AddressEntity" as addr_ent
-    component "CustomerEntityMapper" as cust_map
-    component "AddressEntityMapper" as addr_map
-    component "DemoModeConfig" as demo_cfg
+skinparam component {
+    BackgroundColor #FEFEFE
+    BorderColor #555555
+    FontColor #333333
 }
 
-package "book.infrastructure" <<Book>> #E8F8E8 {
-    component "BookJpaRepository" as book_jpa
-    component "BookEntity" as book_ent
-    component "BookEntityMapper" as book_map
-}
+component [PageBean\n<<@Stateless>>] as pageBean
+component [ApplicationService\n<<@Stateless>>] as appSvc
+component [Repository\n<<interface>>] as repo
+component [JpaRepository\n<<@Stateless>>] as jpaRepo
 
-package "purchase.infrastructure" <<Purchase>> #FFF8E8 {
-    component "CartJpaRepository" as cart_jpa
-    component "OrderJpaRepository" as order_jpa
-    component "CartEntity" as cart_ent
-    component "CartItemEntity" as cart_item_ent
-    component "OrderEntity" as order_ent
-    component "OrderItemEntity" as order_item_ent
-    component "CartEntityMapper" as cart_map
-    component "OrderEntityMapper" as order_map
-}
+pageBean --> appSvc : @Inject
+appSvc --> repo : @Inject
+jpaRepo ..|> repo : implements
 
-package "shared.infrastructure" <<Shared>> #F5E6FA {
-    component "AuditableEntity" as audit_ent
-}
-
-package "auth.application" <<Security>> #FFE4B5 {
-    component "BCryptPasswordHasher" as bcrypt
-}
-
-database "PostgreSQL 17" <<Database>> #D4EDDA {
-    database "customers"
-    database "addresses"
-    database "books"
-    database "carts"
-    database "cart_items"
-    database "orders"
-    database "order_items"
-}
-
-' JPA Repositories → Entities
-cust_jpa --> cust_ent
-addr_jpa --> addr_ent
-book_jpa --> book_ent
-cart_jpa --> cart_ent
-cart_jpa --> cart_item_ent
-order_jpa --> order_ent
-order_jpa --> order_item_ent
-
-' Entities → AuditableEntity (extends)
-cust_ent --> audit_ent
-addr_ent --> audit_ent
-book_ent --> audit_ent
-cart_ent --> audit_ent
-order_ent --> audit_ent
-
-' Entity Mappers
-cust_map --> cust_ent
-cust_map --> Customer
-addr_map --> addr_ent
-addr_map --> Address
-book_map --> book_ent
-book_map --> Book
-cart_map --> cart_ent
-cart_map --> Cart
-order_map --> order_ent
-order_map --> Order
-
-' JPA Repositories → Database
-cust_jpa --> customers
-addr_jpa --> addresses
-book_jpa --> books
-cart_jpa --> carts
-cart_jpa --> cart_items
-order_jpa --> orders
-order_jpa --> order_items
-
-' BCrypt
-bcrypt --> "password hashing"
-
-' Demo Mode
-demo_cfg --> "demo-mode.env"
-demo_cfg --> customers : "seeds demo account\nvia Flyway placeholder"
-
-note bottom of BCryptPasswordHasher
-  Uses jBCrypt library.
-  Hash cost factor: configurable.
-  Methods: hash(), matches()
-end note
-
-note bottom of DemoModeConfig
-  Reads from docker/wildfly/demo-mode.env.
-  Injects demo email/password hash via
-  Flyway placeholder substitution at startup.
-end note
-
-note bottom of AuditableEntity
-  @MappedSuperclass — not an entity itself.
-  Provides: version (JPA @Version),
-  createdAt, updatedAt (TIMESTAMPTZ).
-  Enables optimistic locking across all entities.
+note bottom of jpaRepo
+  CDI resolve interface
+  đến concrete class duy nhất
 end note
 
 @enduml
 ```
-<!-- docs/images/arch/arch-07.svg -->
-![Infrastructure](docs/images/arch/arch-07.svg)
 
+EJB container và CDI container phối hợp:
 
+- CDI resolve interface `CartRepository` đến concrete class `CartJpaRepository`
+  (vì `CartJpaRepository` là `@Stateless` bean duy nhất implement
+  `CartRepository`)
+- Inject được thực hiện qua constructor (constructor injection), mỗi class giữ
+  một no-arg constructor mặc định để EJB container có thể tạo instance trước khi
+  inject
 
+### @PersistenceContext (JPA EntityManager Injection)
 
+Chỉ sử dụng trong infrastructure layer:
 
-
----
-
-## 9. Package Structure / Cấu trúc Package
-
-```
-src/main/java/io/github/phunguy65/bookstore/
-│
-├── auth/                                 ← Bounded Context: Xác thực & Khách hàng
-│   ├── domain/
-│   │   ├── model/
-│   │   │   ├── Customer.java             ← Customer entity (Aggregate Root)
-│   │   │   └── Address.java              ← Address entity
-│   │   ├── valueobject/
-│   │   │   └── CustomerStatus.java       ← ACTIVE | INACTIVE
-│   │   └── repository/
-│   │       ├── CustomerRepository.java   ← Port interface
-│   │       └── AddressRepository.java    ← Port interface
-│   ├── application/
-│   │   └── service/
-│   │       ├── AuthApplicationService.java  ← Login, Register
-│   │       ├── PasswordHasher.java        ← Port interface
-│   │       ├── BCryptPasswordHasher.java  ← Adapter
-│   │       ├── LoginResult.java           ← Result DTO
-│   │       ├── RegisterResult.java        ← Result DTO
-│   │       └── DemoModeSettings.java      ← Config
-│   ├── infrastructure/
-│   │   ├── config/
-│   │   │   └── DemoModeConfig.java        ← CDI producer for demo account
-│   │   └── persistence/
-│   │       ├── entity/
-│   │       │   ├── CustomerEntity.java    ← JPA entity
-│   │       │   └── AddressEntity.java     ← JPA entity
-│   │       ├── mapper/
-│   │       │   ├── CustomerEntityMapper.java
-│   │       │   └── AddressEntityMapper.java
-│   │       └── repository/
-│   │           ├── CustomerJpaRepository.java  ← Adapter (extends JpaRepository)
-│   │           └── AddressJpaRepository.java   ← Adapter (extends JpaRepository)
-│   └── interfaces/
-│       └── web/
-│           ├── LoginPageBean.java         ← Controller (HttpServlet → POJO)
-│           ├── RegisterPageBean.java       ← Controller
-│           ├── LogoutPageBean.java         ← Controller
-│           ├── AuthSession.java           ← Session facade
-│           ├── AuthGuardBean.java         ← Security check
-│           ├── AuthPaths.java             ← Path constants
-│           └── HtmlEscaper.java           ← XSS protection
-│
-├── book/                                 ← Bounded Context: Danh mục Sách
-│   ├── domain/
-│   │   ├── model/
-│   │   │   └── Book.java                 ← Aggregate Root (catalog item)
-│   │   ├── valueobject/
-│   │   │   ├── BookTitle.java
-│   │   │   ├── AuthorName.java
-│   │   │   ├── Isbn.java
-│   │   │   ├── BookDescription.java
-│   │   │   └── ImageUrl.java
-│   │   └── repository/
-│   │       └── BookRepository.java       ← Port interface
-│   └── infrastructure/
-│       └── persistence/
-│           ├── entity/
-│           │   └── BookEntity.java       ← JPA entity
-│           ├── mapper/
-│           │   └── BookEntityMapper.java
-│           └── repository/
-│               └── BookJpaRepository.java ← Adapter
-│
-├── purchase/                             ← Bounded Context: Giỏ hàng & Đặt hàng
-│   ├── domain/
-│   │   ├── model/
-│   │   │   ├── Cart.java                 ← Aggregate Root (1 per customer)
-│   │   │   ├── CartItem.java             ← Line item
-│   │   │   ├── Order.java                ← Aggregate Root
-│   │   │   └── OrderItem.java            ← Line item
-│   │   ├── valueobject/
-│   │   │   └── OrderStatus.java         ← PENDING | PLACED | CANCELLED
-│   │   └── repository/
-│   │       ├── CartRepository.java       ← Port interface
-│   │       └── OrderRepository.java       ← Port interface
-│   ├── application/
-│   │   └── service/
-│   │       ├── CartApplicationService.java   ← Add/Update/Remove cart items
-│   │       ├── CheckoutApplicationService.java← Place order from cart
-│   │       ├── OrderQueryApplicationService.java ← Query order history
-│   │       ├── AccountCatalogApplicationService.java ← Book catalog for account
-│   │       ├── CartViewAssembler.java         ← Domain → View DTO
-│   │       └── (Result DTOs & View DTOs)
-│   ├── infrastructure/
-│   │   └── persistence/
-│   │       ├── entity/
-│   │       │   ├── CartEntity.java
-│   │       │   ├── CartItemEntity.java
-│   │       │   ├── OrderEntity.java
-│   │       │   └── OrderItemEntity.java
-│   │       ├── mapper/
-│   │       │   ├── CartEntityMapper.java
-│   │       │   └── OrderEntityMapper.java
-│   │       └── repository/
-│   │           ├── CartJpaRepository.java ← Adapter
-│   │           └── OrderJpaRepository.java ← Adapter
-│   └── interfaces/
-│       └── web/
-│           ├── CartPageBean.java          ← Controller
-│           ├── CheckoutPageBean.java      ← Controller
-│           ├── OrderHistoryPageBean.java  ← Controller
-│           ├── OrderDetailPageBean.java   ← Controller
-│           ├── (Page Models & Form DTOs)
-│           └── PurchasePaths.java         ← Path constants
-│
-└── shared/                               ← Shared Kernel
-    ├── domain/
-    │   ├── valueobject/                   ← All cross-context VOs
-    │   │   ├── Identity:  CustomerId, BookId, OrderId, CartId, …
-    │   │   ├── Person:     Email, PhoneNumber, FullName, RecipientName
-    │   │   ├── Address:    AddressLine, Ward, District, Province, City,
-    │   │   │               PostalCode, AddressDetails
-    │   │   ├── Numeric:    Money, Quantity
-    │   │   └── Security:   PasswordHash
-    │   └── validation/
-    │       ├── Require.java                ← Validation utilities (notNull, etc.)
-    │       └── FieldValidationException.java
-    └── infrastructure/
-        └── persistence/
-            └── AuditableEntity.java        ← @MappedSuperclass: version, timestamps
+```java
+@PersistenceContext(unitName = "bookstore")
+private EntityManager entityManager;
 ```
 
----
+- `CartJpaRepository` và `OrderJpaRepository` sử dụng `@PersistenceContext` để
+  inject `EntityManager`
+- `unitName = "bookstore"` tham chiếu đến persistence unit định nghĩa trong
+  `persistence.xml`
+- `EntityManager` được quản lý bởi container (Container-Managed EntityManager),
+  tự động tham gia vào JTA transaction hiện tại của EJB
 
-## 10. Architecture Decisions / Các Quyết định Kiến trúc
+### Tổng hợp EJB Lifecycle trong một request
 
-| # | Decision / Quyết định | Reason / Lý do |
-|---|---|---|
-| 1 | **Clean Architecture + Hexagonal** | Tách rõ domain logic khỏi infrastructure, dễ test, dễ thay đổi adapter |
-| 2 | **3 Bounded Contexts** | Auth, Book, Purchase có ngữ cảnh nghiệp vụ riêng biệt, giảm coupling |
-| 3 | **Shared Kernel** | Tránh trùng lặp value objects (Email, Money, CustomerId…) giữa các context |
-| 4 | **JPA Entity Mapper pattern** | Entity (Hibernate) ≠ Domain Model. Mapper ở infrastructure giữ domain "sạch" |
-| 5 | **Stateful session auth** | Dùng Jakarta HttpSession, phù hợp traditional web app (JSP, page-bean) |
-| 6 | **Price snapshot in CartItem/OrderItem** | Chống thay đổi giá sau khi đặt hàng (event sourcing light) |
-| 7 | **Optimistic locking** | JPA `@Version` trên tất cả aggregate, tránh lost update trong concurrent requests |
-| 8 | **Demo Mode qua Flyway placeholder** | Inject demo account hash vào migration script, không cần code config |
-| 9 | **CDI + `@Stateless` EJB** | Jakarta EE standard DI, EJB quản lý transaction/JTA tự động |
-| 10 | **WAR → WildFly deployment** | Traditional Java EE deployment model, tận dụng WildFly managed services |
+```plantuml
+@startuml
+title EJB Lifecycle — Xử lý một request
 
----
+skinparam component {
+    BackgroundColor #FEFEFE
+    BorderColor #555555
+    FontColor #333333
+}
 
-## 11. Glossary / Bảng thuật ngữ
+component [JSP/Servlet] as jsp
+component [PageBean\n<<@Stateless>>] as pageBean
+component [ApplicationService\n<<@Stateless>>] as appSvc
+component [JpaRepository\n<<@Stateless>>] as jpaRepo
+component [EntityManager\n<<Container-Managed>>] as em
+database "Database" as db
 
-| Term / Thuật ngữ | Description / Mô tả |
-|---|---|
-| **Bounded Context** | Ranh giới nghiệp vụ rõ ràng, trong đó một domain model được định nghĩa duy nhất |
-| **Shared Kernel** | Code dùng chung giữa các context, phải nhất quán và simple (Fowler) |
-| **Port / Interface** | Abstract interface mà domain định nghĩa, infrastructure implement |
-| **Adapter** | Implement cụ thể của Port (ví dụ: JPA adapter, BCrypt adapter) |
-| **Aggregate Root** | Entity duy nhất bên ngoài được phép truy cập aggregate (Cart, Order, Book, Customer) |
-| **Entity Mapper** | Chuyển đổi giữa Domain Model và JPA Entity, giữ domain không phụ thuộc persistence |
-| **AuditableEntity** | `@MappedSuperclass` cung cấp `version`, `createdAt`, `updatedAt` cho tất cả entity |
-| **Page Bean** | Controller nhận HTTP request, gọi application service, set page model cho JSP |
-| **Demo Mode** | Chế độ phát triển với tài khoản demo pre-seeded, hash từ Flyway placeholder |
-| **JTA** | Jakarta Transaction API — quản lý transaction bất đồng bộ qua container |
+jsp --> pageBean : JNDI lookup\n(via @Remote interface)
+pageBean --> appSvc : @Inject
+appSvc --> jpaRepo : @Inject
+jpaRepo --> em : @PersistenceContext
+em --> db : SQL
+
+note right of pageBean
+  EJB container tạo/lấy từ pool
+  JTA transaction bắt đầu
+end note
+
+note right of appSvc
+  Tham gia JTA transaction hiện tại
+end note
+
+note right of jpaRepo
+  Tham gia JTA transaction hiện tại
+end note
+
+note right of em
+  Container-Managed
+  Tự động flush/commit
+end note
+
+note bottom of db
+  Khi PageBean trả về PageResult:
+  - Không exception → transaction commit
+  - RuntimeException → transaction rollback
+end note
+
+@enduml
+```
+
+Điểm đáng chú ý:
+
+- **Không sử dụng `@Stateful`** — không có use case cần lưu trạng thái giữa các
+  lần gọi
+- **Không sử dụng `@Singleton`** — không có shared state global
+- **Không sử dụng `@MessageDriven`** — không có xử lý bất đồng bộ/message queue
+- **Không sử dụng `@Local`** — tất cả interface đều là `@Remote`, phù hợp với
+  kiến trúc tách web tier và business tier
